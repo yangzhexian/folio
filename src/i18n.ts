@@ -34,7 +34,7 @@ const en = {
   fileCount: 'files', fileSearch: 'Search file names…', name: 'Name', size: 'Size', actions: 'Actions',
   savedLocally: 'Saved locally', copyNotice: 'Sensitive fields are excluded when copying the full record.',
   noFields: 'No fields yet', noFieldsHint: 'Edit this record to add your details.', confirm: 'Continue',
-  standardNaming: 'Files are copied into this library with consistent, unique names.', welcomeEyebrow: 'YOUR PERSONAL LIBRARY',
+  standardNaming: 'Files are copied into this library with consistent, unique names.', welcomeEyebrow: 'YOUR PERSONAL LIBRARY', localBadge: 'LOCAL',
 };
 
 const zh: typeof en = {
@@ -71,7 +71,7 @@ const zh: typeof en = {
   fileCount: '个文件', fileSearch: '搜索文件名…', name: '名称', size: '大小', actions: '操作',
   savedLocally: '已保存到本机', copyNotice: '整条复制时会排除敏感字段。',
   noFields: '暂无字段', noFieldsHint: '编辑此条目以添加详细信息。', confirm: '继续',
-  standardNaming: '文件将复制到信息库，并自动生成统一且不重复的名称。', welcomeEyebrow: '你的个人信息库',
+  standardNaming: '文件将复制到信息库，并自动生成统一且不重复的名称。', welcomeEyebrow: '你的个人信息库', localBadge: '本地',
 };
 
 export type TranslationKey = keyof typeof en;

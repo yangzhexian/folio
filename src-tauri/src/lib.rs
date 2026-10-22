@@ -21,6 +21,18 @@ fn with_store<T>(
     action(&store)
 }
 
+async fn with_blocking_store<T: Send + 'static>(
+    app: tauri::AppHandle,
+    action: impl FnOnce(&Store) -> Result<T> + Send + 'static,
+) -> Result<T> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        with_store(&state, action)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
 fn localized(locale: &Option<String>, en: &str, zh: &str) -> String {
     if locale.as_deref() == Some("zh") {
         zh.to_owned()
@@ -30,30 +42,34 @@ fn localized(locale: &Option<String>, en: &str, zh: &str) -> String {
 }
 
 #[tauri::command]
-fn load_snapshot(state: State<'_, AppState>) -> Result<Snapshot> {
-    with_store(&state, Store::snapshot)
+async fn load_snapshot(app: tauri::AppHandle) -> Result<Snapshot> {
+    with_blocking_store(app, Store::snapshot).await
 }
 
 #[tauri::command]
-fn save_record(state: State<'_, AppState>, record: ProfileRecord) -> Result<ProfileRecord> {
-    with_store(&state, |store| store.save_record(record))
+async fn save_record(app: tauri::AppHandle, record: ProfileRecord) -> Result<ProfileRecord> {
+    with_blocking_store(app, move |store| store.save_record(record)).await
 }
 
 #[tauri::command]
-fn delete_record(state: State<'_, AppState>, id: String) -> Result<()> {
-    with_store(&state, |store| store.delete_record(&id))
+async fn delete_record(app: tauri::AppHandle, id: String) -> Result<()> {
+    with_blocking_store(app, move |store| store.delete_record(&id)).await
 }
 
 #[tauri::command]
 async fn import_attachments(
     app: tauri::AppHandle,
-    state: State<'_, AppState>,
     record_id: String,
     locale: Option<String>,
 ) -> Result<Vec<Attachment>> {
     let title = localized(&locale, "Add files to Folio", "添加文件到 Folio");
+    let picker_app = app.clone();
     let paths = tauri::async_runtime::spawn_blocking(move || {
-        app.dialog().file().set_title(title).blocking_pick_files()
+        let mut dialog = picker_app.dialog().file().set_title(title);
+        if let Ok(directory) = picker_app.path().document_dir() {
+            dialog = dialog.set_directory(directory);
+        }
+        dialog.blocking_pick_files()
     })
     .await
     .map_err(|e| e.to_string())?;
@@ -64,62 +80,67 @@ async fn import_attachments(
         .into_iter()
         .map(|path| path.into_path().map_err(|e| e.to_string()))
         .collect::<Result<_>>()?;
-    with_store(&state, |store| store.import_files(&record_id, &paths))
+    with_blocking_store(app, move |store| store.import_files(&record_id, &paths)).await
 }
 
 #[tauri::command]
-fn rename_attachment(state: State<'_, AppState>, id: String, name: String) -> Result<Attachment> {
-    with_store(&state, |store| store.rename_attachment(&id, &name))
+async fn rename_attachment(app: tauri::AppHandle, id: String, name: String) -> Result<Attachment> {
+    with_blocking_store(app, move |store| store.rename_attachment(&id, &name)).await
 }
 
 #[tauri::command]
-fn remove_attachment(state: State<'_, AppState>, id: String) -> Result<()> {
-    with_store(&state, |store| store.remove_attachment(&id))
+async fn remove_attachment(app: tauri::AppHandle, id: String) -> Result<()> {
+    with_blocking_store(app, move |store| store.remove_attachment(&id)).await
 }
 
 #[tauri::command]
-fn restore_attachment(state: State<'_, AppState>, id: String) -> Result<Attachment> {
-    with_store(&state, |store| store.restore_attachment(&id))
+async fn restore_attachment(app: tauri::AppHandle, id: String) -> Result<Attachment> {
+    with_blocking_store(app, move |store| store.restore_attachment(&id)).await
 }
 
 #[tauri::command]
-fn attachment_path(state: State<'_, AppState>, id: String) -> Result<String> {
-    with_store(&state, |store| {
+async fn attachment_path(app: tauri::AppHandle, id: String) -> Result<String> {
+    with_blocking_store(app, move |store| {
         store.attachment_path(&id).map(|path| display_path(&path))
     })
+    .await
 }
 
 #[tauri::command]
-fn reveal_attachment(state: State<'_, AppState>, id: String) -> Result<()> {
-    with_store(&state, |store| {
-        let path = store.attachment_path(&id)?;
+async fn reveal_attachment(app: tauri::AppHandle, id: String) -> Result<()> {
+    let path = with_blocking_store(app, move |store| store.attachment_path(&id)).await?;
+    // Shell COM work must run off the UI thread, with no vault lock held.
+    tauri::async_runtime::spawn_blocking(move || {
         tauri_plugin_opener::reveal_item_in_dir(path).map_err(|e| e.to_string())
     })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
-fn open_data_dir(state: State<'_, AppState>) -> Result<()> {
-    with_store(&state, |store| {
-        tauri_plugin_opener::open_path(display_path(store.root()), None::<&str>)
-            .map_err(|e| e.to_string())
+async fn open_data_dir(app: tauri::AppHandle) -> Result<()> {
+    let path = with_blocking_store(app, |store| Ok(display_path(store.root()))).await?;
+    tauri::async_runtime::spawn_blocking(move || {
+        tauri_plugin_opener::open_path(path, None::<&str>).map_err(|e| e.to_string())
     })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
-async fn export_backup(
-    app: tauri::AppHandle,
-    state: State<'_, AppState>,
-    locale: Option<String>,
-) -> Result<Option<String>> {
+async fn export_backup(app: tauri::AppHandle, locale: Option<String>) -> Result<Option<String>> {
     let title = localized(&locale, "Export Folio backup", "导出 Folio 备份");
     let filename = format!(
         "folio-backup-{}.zip",
         chrono::Local::now().format("%Y-%m-%d-%H%M%S")
     );
+    let picker_app = app.clone();
     let path = tauri::async_runtime::spawn_blocking(move || {
-        app.dialog()
-            .file()
-            .set_title(title)
+        let mut dialog = picker_app.dialog().file().set_title(title);
+        if let Ok(directory) = picker_app.path().document_dir() {
+            dialog = dialog.set_directory(directory);
+        }
+        dialog
             .set_file_name(filename)
             .add_filter("Folio backup", &["zip"])
             .blocking_save_file()
@@ -133,21 +154,21 @@ async fn export_backup(
     if path.extension().is_none() {
         path.set_extension("zip");
     }
-    with_store(&state, |store| store.export_backup(&path))?;
-    Ok(Some(display_path(&path)))
+    let output_path = display_path(&path);
+    with_blocking_store(app, move |store| store.export_backup(&path)).await?;
+    Ok(Some(output_path))
 }
 
 #[tauri::command]
-async fn restore_backup(
-    app: tauri::AppHandle,
-    state: State<'_, AppState>,
-    locale: Option<String>,
-) -> Result<bool> {
+async fn restore_backup(app: tauri::AppHandle, locale: Option<String>) -> Result<bool> {
     let title = localized(&locale, "Restore Folio backup", "恢复 Folio 备份");
+    let picker_app = app.clone();
     let path = tauri::async_runtime::spawn_blocking(move || {
-        app.dialog()
-            .file()
-            .set_title(title)
+        let mut dialog = picker_app.dialog().file().set_title(title);
+        if let Ok(directory) = picker_app.path().document_dir() {
+            dialog = dialog.set_directory(directory);
+        }
+        dialog
             .add_filter("Folio backup", &["zip"])
             .blocking_pick_file()
     })
@@ -157,7 +178,7 @@ async fn restore_backup(
         return Ok(false);
     };
     let path = path.into_path().map_err(|e| e.to_string())?;
-    with_store(&state, |store| store.restore_backup(&path))?;
+    with_blocking_store(app, move |store| store.restore_backup(&path)).await?;
     Ok(true)
 }
 
