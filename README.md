@@ -10,6 +10,8 @@ A small desktop library for personal details, education, experience, research, c
 - Copy individual values or a formatted record. Sensitive fields are masked in the detail view and excluded from full-record copying.
 - Keep multiple education, work, project, publication, award, certificate, or contact records without forcing everything into a single form.
 - Attach local files, give them consistent names, copy their full paths, and reveal them in the system file manager.
+- Drop files onto a record, or choose a destination after dropping into the file library.
+- Use light or dark appearance with five accent colors; the default remains light sage.
 - Export a local backup and restore an existing library from it.
 
 ## Development
@@ -41,6 +43,10 @@ Use the star to keep frequently used records in **Favorites**. Individual field 
 
 Use **Add files** from a saved record to copy supporting documents into the managed library. Import keeps the original file in its original location. The file library provides rename, copy-path, and show-in-folder actions. Change the interface language in **Settings**; this changes interface and template labels without translating your own record content.
 
+Drag one or more files from Windows Explorer onto Folio to import them. When a record is open, the drop overlay shows its title and files attach to that record. In **Files**, an empty library, or a view without a selected record, dropping opens a destination chooser: select an existing record or create a document record with an editable title. Canceling the chooser leaves files untouched. Close open dialogs before dropping files, and wait for a running import to finish. A failed new-document import removes its empty record so the operation can be retried; a failed reload after a completed import only retries loading, avoiding duplicate copies. Drag import accepts local regular files, not folders, URLs, network shares, or Windows alternate streams. The same size and batch limits as file-picker import apply.
+
+Open **Settings → Appearance** to choose **Light** or **Dark** and one of **Sage**, **Blue**, **Violet**, **Rose**, or **Amber**. The sun/moon button in the top bar switches appearance quickly. **Reset appearance** restores the original light sage theme. Theme and color preferences persist across restarts, and the desktop title bar follows the selected light/dark mode.
+
 Managed files follow `collection__title__12-character-id.extension`, for example `education__Masters-degree__a1b2c3d4e5f6.pdf`. Spaces become hyphens, unsafe filename characters are sanitized, and Unicode names are retained. The identifier prevents collisions. Rename changes the descriptive part while keeping a safe extension and unique identifier. A single import accepts up to 100 regular files, with a maximum of 2 GiB per file.
 
 ## Privacy and storage
@@ -51,7 +57,7 @@ The SQLite database, managed attachments, and exported backups are **not encrypt
 
 Private sample files are not included in this repository. Git ignores databases, local data directories, build outputs, and test artifacts. Templates describe common information fields; the desktop library starts empty.
 
-On Windows, the default application data directory is `%LOCALAPPDATA%\dev.folio.desktop`. **Settings → Data folder** shows the actual path and provides copy and open actions. The active library contains `vault\folio.sqlite3` and `vault\attachments\<record-id>\<managed-filename>`. The interface language and record sorting preferences are stored in the local webview's storage.
+On Windows, the default application data directory is `%LOCALAPPDATA%\dev.folio.desktop`. **Settings → Data folder** shows the actual path and provides copy and open actions. The active library contains `vault\folio.sqlite3` and `vault\attachments\<record-id>\<managed-filename>`. Interface language, record sorting, theme, and accent preferences are stored in the local webview's storage.
 
 Deleting a record or removing an attachment hides it from the library and offers **Undo** for 12 seconds. The underlying data and files remain on disk; deletion is not secure erasure, and there is no trash management or permanent-purge interface in this version. After the undo notification expires, recovery requires a backup or manual recovery of the local data.
 
@@ -72,6 +78,8 @@ The current backup format is version 1. Limits are 2 GiB per attachment, 10 GiB 
 | `src/i18n.ts` | English and Simplified Chinese interface text |
 | `src/domain.ts` | Search, localized labels, copy formatting, and file-size formatting |
 | `src/sorting.ts` | Chronological and localized title ordering, stable ties, and saved preference validation |
+| `src/theme.ts` | Appearance preferences and theme application |
+| `src/useFileDrop.ts` | Native drop-event lifecycle and browser navigation protection |
 | `src/api.ts` | Tauri command bridge and isolated in-memory browser preview |
 | `src-tauri/src/` | SQLite persistence, native dialogs, attachment operations, and backup handling |
 | `src-tauri/capabilities/` | Native capabilities exposed to the application window |

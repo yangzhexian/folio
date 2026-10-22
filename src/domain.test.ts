@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fieldLabel, filterRecords, formatBytes, formatRecord } from './domain';
+import { fieldLabel, filterAttachments, filterRecords, formatBytes, formatRecord } from './domain';
 import { createRecord, templates } from './templates';
 import type { Attachment, Field, ProfileRecord } from './types';
 
@@ -33,6 +33,21 @@ describe('record search', () => {
     expect(filterRecords(records, [], 'example', 'education').map((item) => item.id)).toEqual(['record-1', 'record-3']);
     expect(filterRecords(records, [], '  ', 'all')).toEqual(records);
     expect(filterRecords(records, [], 'example', 'identity')).toEqual([]);
+  });
+});
+
+describe('file search', () => {
+  const sibling = { ...attachment, id: 'sibling', fileName: 'education__diploma.pdf', originalName: '学位证.pdf' };
+  it('matches a filename without returning unrelated attachments on the same record', () => {
+    expect(filterAttachments([record()], [attachment, sibling], 'ＴＲＡＮＳＣＲＩＰＴ pdf')).toEqual([attachment]);
+    expect(filterAttachments([record()], [attachment, sibling], '学位证')).toEqual([sibling]);
+    expect(filterAttachments([record()], [attachment, sibling], 'transcript diploma')).toEqual([]);
+  });
+  it('combines parent metadata with each file and excludes orphaned files', () => {
+    const orphan = { ...attachment, id: 'orphan', recordId: 'missing' };
+    expect(filterAttachments([record()], [attachment, sibling, orphan], '学校 transcript')).toEqual([attachment]);
+    expect(filterAttachments([record()], [attachment, sibling, orphan], 'University')).toEqual([attachment, sibling]);
+    expect(filterAttachments([record()], [attachment, orphan], '')).toEqual([attachment]);
   });
 });
 

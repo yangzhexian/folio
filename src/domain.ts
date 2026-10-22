@@ -5,6 +5,14 @@ function normalizeSearch(value: string): string {
   return value.normalize('NFKC').toLowerCase();
 }
 
+function recordSearchText(record: ProfileRecord): string {
+  const labels = categoryLabels[record.category];
+  return normalizeSearch([
+    record.title, record.subtitle, record.notes, record.category, labels.en, labels.zh,
+    ...record.tags, ...record.fields.flatMap(field => [field.label, field.labelZh ?? '', field.value]),
+  ].join('\n'));
+}
+
 export function filterRecords(records: ProfileRecord[], attachments: Attachment[], query: string, category: 'all' | 'favorites' | Category): ProfileRecord[] {
   const tokens = normalizeSearch(query).trim().split(/\s+/u).filter(Boolean);
   const attachmentNames = new Map<string, string[]>();
@@ -17,19 +25,19 @@ export function filterRecords(records: ProfileRecord[], attachments: Attachment[
     if (category === 'favorites' && !record.favorite) return false;
     if (category !== 'all' && category !== 'favorites' && record.category !== category) return false;
     if (tokens.length === 0) return true;
-    const categoryLabel = categoryLabels[record.category];
-    const searchable = normalizeSearch([
-      record.title,
-      record.subtitle,
-      record.notes,
-      record.category,
-      categoryLabel.en,
-      categoryLabel.zh,
-      ...record.tags,
-      ...record.fields.flatMap((field) => [field.label, field.labelZh ?? '', field.value]),
-      ...(attachmentNames.get(record.id) ?? []),
-    ].join('\n'));
+    const searchable = recordSearchText(record) + '\n' + normalizeSearch((attachmentNames.get(record.id) ?? []).join('\n'));
     return tokens.every((token) => searchable.includes(token));
+  });
+}
+
+export function filterAttachments(records: ProfileRecord[], attachments: Attachment[], query: string): Attachment[] {
+  const tokens = normalizeSearch(query).trim().split(/\s+/u).filter(Boolean);
+  const parents = new Map(records.map(record => [record.id, recordSearchText(record)]));
+  return attachments.filter(file => {
+    const parent = parents.get(file.recordId);
+    if (parent === undefined) return false;
+    const searchable = `${parent}\n${normalizeSearch(file.fileName)}\n${normalizeSearch(file.originalName)}`;
+    return tokens.every(token => searchable.includes(token));
   });
 }
 

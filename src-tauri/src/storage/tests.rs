@@ -130,6 +130,78 @@ fn failed_batch_import_rolls_back_database_and_copied_files() {
 }
 
 #[test]
+fn dropped_files_use_managed_names_and_preserve_originals() {
+    let (temp, store) = store();
+    let saved = store.save_record(record()).unwrap();
+    let original = source(&temp, "个人证件.pdf", b"local document");
+    let imported = store
+        .import_dropped_files(&saved.id, &[original.to_string_lossy().into_owned()])
+        .unwrap();
+    assert_eq!(imported.len(), 1);
+    assert_eq!(imported[0].metadata.original_name, "个人证件.pdf");
+    assert!(imported[0]
+        .metadata
+        .file_name
+        .starts_with("identity__个人资料__"));
+    assert!(imported[0].metadata.file_name.ends_with(".pdf"));
+    assert_eq!(fs::read(&original).unwrap(), b"local document");
+    assert_eq!(
+        fs::read(store.attachment_path(&imported[0].metadata.id).unwrap()).unwrap(),
+        b"local document"
+    );
+}
+
+#[test]
+fn dropped_batch_rejects_folders_missing_files_and_relative_paths_without_changes() {
+    let (temp, store) = store();
+    let saved = store.save_record(record()).unwrap();
+    let good = source(&temp, "good.txt", b"valid local file")
+        .to_string_lossy()
+        .into_owned();
+    let invalid = [
+        temp.path().to_string_lossy().into_owned(),
+        temp.path()
+            .join("missing.txt")
+            .to_string_lossy()
+            .into_owned(),
+        "relative.txt".into(),
+        "https://example.com/file.txt".into(),
+        "file:///C:/private.txt".into(),
+        "invalid\0path".into(),
+    ];
+    for path in invalid {
+        assert!(store
+            .import_dropped_files(&saved.id, &[good.clone(), path])
+            .is_err());
+        assert!(store.snapshot().unwrap().attachments.is_empty());
+        assert!(!store.vault().join("attachments").join(&saved.id).exists());
+    }
+    assert!(store
+        .import_dropped_files(&saved.id, &vec![good; 101])
+        .is_err());
+    assert!(store.snapshot().unwrap().attachments.is_empty());
+}
+
+#[cfg(windows)]
+#[test]
+fn dropped_windows_paths_reject_network_devices_and_alternate_streams() {
+    for value in [
+        r"\\server\share\file.txt",
+        r"\\?\UNC\server\share\file.txt",
+        r"\\.\PhysicalDrive0",
+        r"\\?\GLOBALROOT\Device\HarddiskVolume1\file.txt",
+        r"C:relative.txt",
+        r"\root-relative.txt",
+        r"C:\file.txt:secret",
+    ] {
+        assert!(
+            validate_local_drop_path(Path::new(value)).is_err(),
+            "accepted {value}"
+        );
+    }
+}
+
+#[test]
 fn backup_round_trip_restores_metadata_files_and_keeps_previous_vault() {
     let (temp, store) = store();
     let record = store.save_record(record()).unwrap();

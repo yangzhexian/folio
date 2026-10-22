@@ -244,6 +244,64 @@ test('guards unsaved edits and resets browser preview data on reload', async ({ 
   await expect(page.getByText('Temporary browser record', { exact: true })).toBeHidden();
 });
 
+test('keeps keyboard focus inside dialogs and restores the opener after closing', async ({ page }) => {
+  const edit = page.getByRole('button', { name: 'Edit', exact: true });
+  await edit.click();
+  const editor = page.getByRole('dialog', { name: 'Edit', exact: true });
+  await expect(editor.getByLabel('Title', { exact: true })).toBeFocused();
+  await page.keyboard.press('Control+k');
+  await expect(editor.getByLabel('Title', { exact: true })).toBeFocused();
+  await editor.getByRole('button', { name: 'Save changes', exact: true }).focus();
+  await page.keyboard.press('Tab');
+  await expect(editor.getByRole('button', { name: 'Close', exact: true })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(editor.getByRole('button', { name: 'Save changes', exact: true })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(editor).toBeHidden();
+  await expect(edit).toBeFocused();
+  await edit.click();
+  await editor.getByLabel('Title', { exact: true }).fill('Unsaved keyboard test');
+  await page.keyboard.press('Escape');
+  const confirm = page.getByRole('dialog', { name: 'Discard unsaved changes?' });
+  await expect(confirm).toBeVisible();
+  await page.keyboard.press('Control+k');
+  expect(await confirm.evaluate(node => node.contains(document.activeElement))).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(confirm).toBeHidden();
+  expect(await editor.evaluate(node => node.contains(document.activeElement))).toBe(true);
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByRole('button', { name: 'Discard', exact: true }).click();
+  await expect(editor).toBeHidden();
+  await expect(edit).toBeFocused();
+});
+
+test('wraps long titles, subtitles, tags, and field values within the compact detail pane', async ({ page }) => {
+  const editor = await startCustomRecord(page, 'LongTitle'.repeat(22));
+  await editor.getByLabel('Subtitle', { exact: true }).fill('LongSubtitle'.repeat(25));
+  await editor.getByLabel('Tags', { exact: true }).fill('LongTag'.repeat(40));
+  await editor.getByRole('button', { name: 'Add field', exact: true }).first().click();
+  await editor.getByLabel('Label 1', { exact: true }).fill('LongLabel'.repeat(18));
+  await editor.getByLabel('Value 1', { exact: true }).fill('https://example.com/' + 'value'.repeat(80));
+  await editor.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(editor).toBeHidden();
+  await page.setViewportSize({ width: 900, height: 620 });
+  expect(await page.locator('.detail-pane').evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('rejects browser file drops without navigating away from the library', async ({ page }) => {
+  const originalUrl = page.url();
+  await page.evaluate(() => {
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(['synthetic fixture'], 'synthetic.txt', { type: 'text/plain' }));
+    window.dispatchEvent(new DragEvent('dragover', { dataTransfer: transfer, bubbles: true, cancelable: true }));
+    window.dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }));
+  });
+  await expect(page.getByRole('alert')).toContainText('Open the desktop app to manage files and backups.');
+  expect(page.url()).toBe(originalUrl);
+  await expect(page.locator('.record-card')).toHaveCount(3);
+});
+
 test('keeps native attachment actions explicit in browser preview', async ({ page }) => {
   await page.getByRole('button', { name: 'Add files', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Open the desktop app to manage files and backups.');

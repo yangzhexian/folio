@@ -7,8 +7,8 @@ The test suite uses synthetic values and temporary directories. It does not read
 | Command | What it verifies |
 | --- | --- |
 | `npm run build` | TypeScript checking and the production frontend bundle |
-| `npm test` | Search across bilingual fields and filenames, copy formatting and sensitive-field exclusion, independent template records, file-size formatting, and chronological and localized title sorting |
-| `npm run test:e2e` | Browser interface workflows in Chromium |
+| `npm test` | Record and attachment search, copy formatting and sensitive-field exclusion, independent template records, file-size formatting, chronological and localized title sorting, and appearance preferences |
+| `npm run test:e2e` | Browser interface workflows, appearance, and Tauri event/IPC adapter behavior using public mocks |
 | `cargo test --manifest-path src-tauri/Cargo.toml` | SQLite persistence, attachment handling, ZIP validation, and restore recovery using temporary directories |
 | `cargo check --manifest-path src-tauri/Cargo.toml` | Rust and Tauri integration compilation |
 | `cargo fmt --manifest-path src-tauri/Cargo.toml -- --check` | Rust source formatting |
@@ -27,7 +27,9 @@ To inspect a failed trace, run `npx playwright show-trace` with the path printed
 
 ## Browser coverage
 
-The fourteen browser tests cover multiword search with Chinese and English labels, an empty result and reset, the search keyboard shortcut, custom record creation and editing, multiline values, field labels, tags and notes, stable focus while typing, favorite filtering, record deletion and immediate undo, sensitive-value masking, full-record clipboard exclusion, explicit individual-value copying, English/Chinese switching and preference persistence, unsaved edit confirmation, browser data reset, and clear handling of native-only file actions. They also cover all six sort orders, different creation and modification times after editing, preserved selection when favorites or language changes reorder the list, persisted sorting across filters and reloads, the simplified bilingual toolbar, and record creation from an empty library.
+The 17 library browser tests cover multiword search with Chinese and English labels, an empty result and reset, the search keyboard shortcut, custom record creation and editing, multiline values, field labels, tags and notes, stable focus while typing, favorite filtering, record deletion and immediate undo, sensitive-value masking, full-record clipboard exclusion, explicit individual-value copying, English/Chinese switching and preference persistence, unsaved edit confirmation, browser data reset, and clear handling of native-only file actions. They also cover all six sort orders, different creation and modification times after editing, preserved selection when favorites or language changes reorder the list, persisted sorting across filters and reloads, the simplified bilingual toolbar, record creation from an empty library, modal keyboard containment and focus restoration, long-content wrapping, and safe rejection of browser file drops.
+
+Three appearance tests cover light sage defaults, all five accents in both modes, preference persistence, language switching, the quick theme toggle, reset, and invalid preference fallback. Six native-adapter tests use Tauri's installed public event and IPC mocks to run the actual frontend drop listener: current-record import, duplicate paths, target selection and cancellation, empty-library creation, failure rollback and retry, modal and busy guards, precise file-name search, tooltips, and reload-only retry after a completed import. These mocks do not execute Rust or Windows Explorer.
 
 Sorting unit tests include timezone-aware chronology, natural numeric ordering for English and Chinese titles, deterministic ties, malformed dates, input immutability, and validation of saved preferences.
 
@@ -35,9 +37,11 @@ The resource and layout check observes network requests during reload and langua
 
 ## Native storage coverage
 
-Rust tests use isolated temporary vaults to exercise record persistence after reopening, attachment import and duplicate names, source preservation, filename sanitization and traversal rejection, batch-import rollback, delete and undo behavior, backup round trips, invalid archive schemas and paths, attachment metadata mismatch, recovery from an interrupted restore, and exclusion of deleted data from exports. Export validation also rejects a synthetic manifest larger than the restore limit.
+Rust tests use isolated temporary vaults to exercise record persistence after reopening, attachment import and duplicate names, source preservation, filename sanitization and traversal rejection, batch-import rollback, delete and undo behavior, backup round trips, invalid archive schemas and paths, attachment metadata mismatch, recovery from an interrupted restore, and exclusion of deleted data from exports. Export validation also rejects a synthetic manifest larger than the restore limit. Native drop tests verify managed copies, entire-batch validation before copying, source preservation, and rejection of unsafe Windows paths and directories.
 
 ## Latest recorded validation
+
+For version 0.2.0 on 2026-10-22, all 26 frontend unit tests, 26 browser/interface tests, and 19 Rust tests passed. Rust formatting and compilation checks passed, and the Windows release executable and NSIS installer were rebuilt successfully. The UI review covered both languages, five accent colors in light/dark mode, record lists, details, editors, settings, files, drop feedback, the destination chooser, and 900 × 620 layouts. Fixes include distinct navigation icons, exact attachment search without sibling matches, accurate search-empty states, full-name tooltips, modal shortcut containment and nested focus restoration, long-content wrapping, short-window navigation, and readable text/icon contrast. The theme review measured primary-button text contrast above 4.5:1 in all ten combinations and checked representative rendered text colors against their backgrounds. Actual Windows Explorer drag gestures and native theme/title-bar rendering were not manually re-tested; the native importer and frontend event adapter were verified separately.
 
 After the interface simplification on 2026-10-22, all 19 frontend unit tests and 14 browser tests passed with installed Google Chrome. The production frontend, Windows release executable, and NSIS installer were rebuilt successfully. English and Chinese screenshots were inspected at 1440 × 1000 and 900 × 620, along with the empty library at 900 × 620; the toolbar remained accessible and the certificate and language icons were distinct. The storage implementation was unchanged, and native GUI workflows were not repeated for this interface update.
 

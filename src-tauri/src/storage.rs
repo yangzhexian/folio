@@ -126,6 +126,37 @@ impl Store {
         Ok(())
     }
 
+    pub fn import_dropped_files(
+        &self,
+        record_id: &str,
+        paths: &[String],
+    ) -> Result<Vec<Attachment>> {
+        validate_id(record_id)?;
+        if paths.len() > 100 {
+            return Err("Import at most 100 files at a time.".into());
+        }
+        // Validate the whole native drop before copying anything. The shared importer then
+        // applies its usual size limit, managed names, transaction, and failure cleanup.
+        let paths = paths
+            .iter()
+            .map(|value| {
+                if value.len() > 131_072 || value.contains('\0') {
+                    return Err("Invalid dropped file path.".into());
+                }
+                let path = PathBuf::from(value);
+                validate_local_drop_path(&path)?;
+                let resolved = path.canonicalize().map_err(err)?;
+                validate_local_drop_path(&resolved)?;
+                let metadata = fs::metadata(&resolved).map_err(err)?;
+                if !metadata.is_file() || metadata.len() > MAX_FILE_SIZE {
+                    return Err("Drop regular files up to 2 GB. Folders cannot be imported.".into());
+                }
+                Ok(resolved)
+            })
+            .collect::<Result<Vec<_>>>()?;
+        self.import_files(record_id, &paths)
+    }
+
     pub fn import_files(&self, record_id: &str, paths: &[PathBuf]) -> Result<Vec<Attachment>> {
         validate_id(record_id)?;
         if paths.len() > 100 {
@@ -743,6 +774,50 @@ pub fn display_path(path: &Path) -> String {
     } else {
         value.strip_prefix("\\\\?\\").unwrap_or(&value).to_owned()
     }
+}
+
+fn validate_local_drop_path(path: &Path) -> Result<()> {
+    if !path.is_absolute() {
+        return Err("Drop files using absolute local paths.".into());
+    }
+    #[cfg(windows)]
+    {
+        use std::path::Prefix;
+        use windows_sys::Win32::Storage::FileSystem::GetDriveTypeW;
+        let drive = match path.components().next() {
+            Some(Component::Prefix(prefix)) => match prefix.kind() {
+                Prefix::Disk(drive) | Prefix::VerbatimDisk(drive) => drive,
+                _ => {
+                    return Err(
+                        "Network and device paths cannot be imported by drag and drop.".into(),
+                    )
+                }
+            },
+            _ => return Err("Drop files using absolute local paths.".into()),
+        };
+        if path.components().any(|part| match part {
+            Component::Normal(value) => value.to_string_lossy().contains(':'),
+            _ => false,
+        }) {
+            return Err("Alternate file streams cannot be imported.".into());
+        }
+        let root: Vec<u16> = format!("{}:\\\0", char::from(drive))
+            .encode_utf16()
+            .collect();
+        // SAFETY: root is a NUL-terminated UTF-16 drive root valid for this call.
+        let drive_type = unsafe { GetDriveTypeW(root.as_ptr()) };
+        // DRIVE_REMOVABLE, DRIVE_FIXED, DRIVE_CDROM, DRIVE_RAMDISK; reject remote/unknown.
+        if !matches!(drive_type, 2 | 3 | 5 | 6) {
+            return Err(
+                "Drop files stored on a local drive. Network drives are not supported.".into(),
+            );
+        }
+    }
+    #[cfg(not(windows))]
+    if path.to_string_lossy().starts_with("//") {
+        return Err("Network paths cannot be imported by drag and drop.".into());
+    }
+    Ok(())
 }
 
 fn safe_extension(path: &Path) -> Option<String> {

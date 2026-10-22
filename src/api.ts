@@ -43,6 +43,10 @@ export const api = {
     if (!desktop) throw new Error('DESKTOP_ONLY');
     return invoke<Attachment[]>('import_attachments', { recordId, locale });
   },
+  attachDropped: async (recordId: string, paths: string[]) => {
+    if (!desktop) throw new Error('DESKTOP_ONLY');
+    return invoke<Attachment[]>('import_dropped_attachments', { recordId, paths });
+  },
   path: (id: string) => invoke<string>('attachment_path', { id }),
   reveal: (id: string) => invoke<void>('reveal_attachment', { id }),
   rename: (id: string, name: string) => invoke<Attachment>('rename_attachment', { id, name }),

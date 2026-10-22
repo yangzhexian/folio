@@ -84,6 +84,18 @@ async fn import_attachments(
 }
 
 #[tauri::command]
+async fn import_dropped_attachments(
+    app: tauri::AppHandle,
+    record_id: String,
+    paths: Vec<String>,
+) -> Result<Vec<Attachment>> {
+    with_blocking_store(app, move |store| {
+        store.import_dropped_files(&record_id, &paths)
+    })
+    .await
+}
+
+#[tauri::command]
 async fn rename_attachment(app: tauri::AppHandle, id: String, name: String) -> Result<Attachment> {
     with_blocking_store(app, move |store| store.rename_attachment(&id, &name)).await
 }
@@ -206,6 +218,7 @@ pub fn run() {
             save_record,
             delete_record,
             import_attachments,
+            import_dropped_attachments,
             rename_attachment,
             remove_attachment,
             restore_attachment,

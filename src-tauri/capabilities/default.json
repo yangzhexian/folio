@@ -3,5 +3,5 @@
   "identifier": "main-window",
   "description": "The local Folio window can copy text. File operations are scoped by Rust commands.",
   "windows": ["main"],
-  "permissions": ["core:default", "core:window:allow-destroy", "clipboard-manager:allow-write-text"]
+  "permissions": ["core:default", "core:window:allow-destroy", "core:window:allow-set-theme", "clipboard-manager:allow-write-text"]
 }
