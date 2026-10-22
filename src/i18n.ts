@@ -2,7 +2,9 @@ import type { Locale } from './types';
 
 const en = {
   library: 'Personal library', all: 'All records', favorites: 'Favorites', files: 'Files', collections: 'COLLECTIONS',
-  localOnly: 'Stored on this device', newRecord: 'New record', search: 'Search records, fields, files…',
+  new: 'New', newRecord: 'New record', search: 'Search records, fields, files…',
+  sortRecords: 'Sort records', sortUpdatedDesc: 'Updated: newest first', sortUpdatedAsc: 'Updated: oldest first',
+  sortCreatedDesc: 'Created: newest first', sortCreatedAsc: 'Created: oldest first', sortTitleAsc: 'Title: A–Z', sortTitleDesc: 'Title: Z–A',
   records: 'records', fields: 'fields', attachments: 'attachments', record: 'Record', details: 'Details',
   edit: 'Edit', copy: 'Copy', copyRecord: 'Copy record', copied: 'Copied to clipboard', save: 'Save changes', cancel: 'Cancel',
   delete: 'Delete', remove: 'Remove', title: 'Title', subtitle: 'Subtitle', tags: 'Tags', notes: 'Notes',
@@ -12,7 +14,7 @@ const en = {
   copyPath: 'Copy path', revealFolder: 'Show in folder', rename: 'Rename', fileName: 'File name', original: 'Original',
   updated: 'Updated', created: 'Created', settings: 'Settings', language: 'Language', english: 'English', chinese: '简体中文',
   backup: 'Export backup', restore: 'Restore backup', dataFolder: 'Data folder', openFolder: 'Open folder',
-  storage: 'Local storage', privacy: 'Your records and files stay on this device. No account. No cloud sync.',
+  storage: 'Storage',
   storageDetail: 'Data and backups are not encrypted. Protect this device and keep a backup somewhere safe.',
   backupHelp: 'A local ZIP includes records and attachments. Restore replaces this library and keeps a recovery copy.',
   restoreTitle: 'Restore your library?', restoreBody: 'The selected backup will replace the current records and files. A recovery copy of this library will be kept locally.',
@@ -30,16 +32,17 @@ const en = {
   discardTitle: 'Discard unsaved changes?', discardBody: 'Your latest edits have not been saved.', discard: 'Discard',
   nameHint: 'The file extension is kept automatically.', tagsHint: 'Separate with commas', noNotes: 'No notes',
   text: 'Text', multiline: 'Long text', date: 'Date', email: 'Email', phone: 'Phone', url: 'URL',
-  close: 'Close', back: 'Back', total: 'Total records', recent: 'Recently updated', fileLibrary: 'File library',
+  close: 'Close', back: 'Back', total: 'Total records', fileLibrary: 'File library',
   fileCount: 'files', fileSearch: 'Search file names…', name: 'Name', size: 'Size', actions: 'Actions',
-  savedLocally: 'Saved locally', copyNotice: 'Sensitive fields are excluded when copying the full record.',
+  copyNotice: 'Sensitive fields are excluded when copying the full record.',
   noFields: 'No fields yet', noFieldsHint: 'Edit this record to add your details.', confirm: 'Continue',
-  standardNaming: 'Files are copied into this library with consistent, unique names.', welcomeEyebrow: 'YOUR PERSONAL LIBRARY', localBadge: 'LOCAL',
 };
 
 const zh: typeof en = {
   library: '个人信息库', all: '全部条目', favorites: '收藏', files: '文件', collections: '信息分类',
-  localOnly: '仅存储在本机', newRecord: '新建条目', search: '搜索条目、字段、文件…',
+  new: '新建', newRecord: '新建条目', search: '搜索条目、字段、文件…',
+  sortRecords: '条目排序', sortUpdatedDesc: '修改时间：由新到旧', sortUpdatedAsc: '修改时间：由旧到新',
+  sortCreatedDesc: '创建时间：由新到旧', sortCreatedAsc: '创建时间：由旧到新', sortTitleAsc: '标题：升序', sortTitleDesc: '标题：降序',
   records: '条记录', fields: '个字段', attachments: '个附件', record: '条目', details: '详细信息',
   edit: '编辑', copy: '复制', copyRecord: '复制条目', copied: '已复制到剪贴板', save: '保存更改', cancel: '取消',
   delete: '删除', remove: '移除', title: '标题', subtitle: '副标题', tags: '标签', notes: '备注',
@@ -49,7 +52,7 @@ const zh: typeof en = {
   copyPath: '复制路径', revealFolder: '在文件夹中显示', rename: '重命名', fileName: '文件名', original: '原文件名',
   updated: '更新于', created: '创建于', settings: '设置', language: '语言', english: 'English', chinese: '简体中文',
   backup: '导出备份', restore: '恢复备份', dataFolder: '数据文件夹', openFolder: '打开文件夹',
-  storage: '本地存储', privacy: '信息和附件仅保存在这台设备上，无需账户，无云端同步。',
+  storage: '数据存储',
   storageDetail: '数据和备份未加密。请保护本机，并妥善保存备份。',
   backupHelp: '本地 ZIP 备份包含条目和附件。恢复时将替换当前信息库，并保留恢复副本。',
   restoreTitle: '恢复信息库？', restoreBody: '所选备份将替换当前条目和文件。系统会在本地保留当前信息库的恢复副本。',
@@ -67,11 +70,10 @@ const zh: typeof en = {
   discardTitle: '放弃未保存的更改？', discardBody: '最近的修改尚未保存。', discard: '放弃更改',
   nameHint: '文件扩展名会自动保留。', tagsHint: '用逗号分隔', noNotes: '暂无备注',
   text: '文本', multiline: '长文本', date: '日期', email: '邮箱', phone: '电话', url: '链接',
-  close: '关闭', back: '返回', total: '全部条目', recent: '最近更新', fileLibrary: '文件库',
+  close: '关闭', back: '返回', total: '全部条目', fileLibrary: '文件库',
   fileCount: '个文件', fileSearch: '搜索文件名…', name: '名称', size: '大小', actions: '操作',
-  savedLocally: '已保存到本机', copyNotice: '整条复制时会排除敏感字段。',
+  copyNotice: '整条复制时会排除敏感字段。',
   noFields: '暂无字段', noFieldsHint: '编辑此条目以添加详细信息。', confirm: '继续',
-  standardNaming: '文件将复制到信息库，并自动生成统一且不重复的名称。', welcomeEyebrow: '你的个人信息库', localBadge: '本地',
 };
 
 export type TranslationKey = keyof typeof en;

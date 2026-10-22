@@ -6,6 +6,7 @@ A small desktop library for personal details, education, experience, research, c
 
 - Create records from bilingual templates or start with custom fields.
 - Search titles, field names, values, notes, tags, and attachment names; filter by collection or favorites.
+- Sort records by modification time, creation time, or title in either direction; keep the chosen order across sessions.
 - Copy individual values or a formatted record. Sensitive fields are masked in the detail view and excluded from full-record copying.
 - Keep multiple education, work, project, publication, award, certificate, or contact records without forcing everything into a single form.
 - Attach local files, give them consistent names, copy their full paths, and reveal them in the system file manager.
@@ -32,7 +33,9 @@ To inspect just the interface, run `npm run dev` and open `http://127.0.0.1:1420
 
 ## Using the library
 
-Choose **New record**, select a template, and fill only the fields you need. **Edit** lets you change the title, collection, tags, notes, and field definitions; custom fields can also have separate English and Chinese labels. Search accepts multiple words, including Chinese text, and requires every word to match somewhere in a record or its attachment names.
+Choose **New** in the record list toolbar, select a template, and fill only the fields you need. At compact window widths, this button appears as **+**, with a **New record** tooltip. **Edit** lets you change the title, collection, tags, notes, and field definitions; custom fields can also have separate English and Chinese labels. Search accepts multiple words, including Chinese text, and requires every word to match somewhere in a record or its attachment names.
+
+The list toolbar also offers six sort orders: modification time or creation time with newest or oldest first, and title in ascending or descending order. The default is most recently modified first. The chosen order persists across searches, collections, language changes, and restarts; changing it keeps the current record selected. Title ordering follows the interface language and compares embedded numbers naturally.
 
 Use the star to keep frequently used records in **Favorites**. Individual field copy buttons copy the actual value, including a sensitive value when explicitly requested. **Copy record** omits fields marked sensitive. Masking is a display convenience rather than encryption, and searching still includes sensitive field values. Notes and ordinary fields are copied as entered, so place values that need masking in a sensitive field.
 
@@ -48,7 +51,7 @@ The SQLite database, managed attachments, and exported backups are **not encrypt
 
 Private sample files are not included in this repository. Git ignores databases, local data directories, build outputs, and test artifacts. Templates describe common information fields; the desktop library starts empty.
 
-On Windows, the default application data directory is `%LOCALAPPDATA%\dev.folio.desktop`. **Settings → Data folder** shows the actual path and provides copy and open actions. The active library contains `vault\folio.sqlite3` and `vault\attachments\<record-id>\<managed-filename>`. The interface language preference is stored in the local webview's storage.
+On Windows, the default application data directory is `%LOCALAPPDATA%\dev.folio.desktop`. **Settings → Data folder** shows the actual path and provides copy and open actions. The active library contains `vault\folio.sqlite3` and `vault\attachments\<record-id>\<managed-filename>`. The interface language and record sorting preferences are stored in the local webview's storage.
 
 Deleting a record or removing an attachment hides it from the library and offers **Undo** for 12 seconds. The underlying data and files remain on disk; deletion is not secure erasure, and there is no trash management or permanent-purge interface in this version. After the undo notification expires, recovery requires a backup or manual recovery of the local data.
 
@@ -68,6 +71,7 @@ The current backup format is version 1. Limits are 2 GiB per attachment, 10 GiB 
 | `src/templates.ts` | Bilingual record templates and empty-record creation |
 | `src/i18n.ts` | English and Simplified Chinese interface text |
 | `src/domain.ts` | Search, localized labels, copy formatting, and file-size formatting |
+| `src/sorting.ts` | Chronological and localized title ordering, stable ties, and saved preference validation |
 | `src/api.ts` | Tauri command bridge and isolated in-memory browser preview |
 | `src-tauri/src/` | SQLite persistence, native dialogs, attachment operations, and backup handling |
 | `src-tauri/capabilities/` | Native capabilities exposed to the application window |

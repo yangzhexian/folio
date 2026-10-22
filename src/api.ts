@@ -7,18 +7,18 @@ const timestamp = '2026-01-12T09:00:00.000Z';
 const demo: Snapshot = {
   dataDir: 'Desktop app only', attachments: [],
   records: [
-    { id: '00000000-0000-4000-8000-000000000001', category: 'identity', title: 'Personal details', subtitle: 'The essentials, always at hand', tags: ['Personal'], favorite: true, notes: '', createdAt: timestamp, updatedAt: timestamp, fields: [
+    { id: '00000000-0000-4000-8000-000000000001', category: 'identity', title: 'Personal details', subtitle: 'The essentials, always at hand', tags: ['Personal'], favorite: true, notes: '', createdAt: '2026-01-01T09:00:00.000Z', updatedAt: timestamp, fields: [
       { id: 'name', label: 'Full name', labelZh: '姓名', value: 'Alex Morgan', kind: 'text', sensitive: false },
       { id: 'email', label: 'Email', labelZh: '邮箱', value: 'alex@example.com', kind: 'email', sensitive: false },
       { id: 'city', label: 'Current city', labelZh: '现居城市', value: 'Shanghai / 上海', kind: 'text', sensitive: false },
       { id: 'id', label: 'Document number', labelZh: '证件号码', value: 'DEMO-000000', kind: 'text', sensitive: true },
     ] },
-    { id: '00000000-0000-4000-8000-000000000002', category: 'education', title: 'MSc · Computer Science', subtitle: 'Example University · 2023–2026', tags: ['Graduate'], favorite: true, notes: 'Example record. Replace with your own education history in the desktop app.', createdAt: timestamp, updatedAt: timestamp, fields: [
+    { id: '00000000-0000-4000-8000-000000000002', category: 'education', title: 'MSc · Computer Science', subtitle: 'Example University · 2023–2026', tags: ['Graduate'], favorite: true, notes: 'Example record. Replace with your own education history in the desktop app.', createdAt: '2026-01-03T09:00:00.000Z', updatedAt: '2026-01-10T09:00:00.000Z', fields: [
       { id: 'institution', label: 'Institution', labelZh: '学校', value: 'Example University', kind: 'text', sensitive: false },
       { id: 'degree', label: 'Degree', labelZh: '学位', value: 'Master of Science', kind: 'text', sensitive: false },
       { id: 'major', label: 'Major', labelZh: '专业', value: 'Computer Science', kind: 'text', sensitive: false },
     ] },
-    { id: '00000000-0000-4000-8000-000000000003', category: 'research', title: 'Research portfolio', subtitle: 'Projects, publications, and ideas', tags: ['Research'], favorite: false, notes: '', createdAt: timestamp, updatedAt: timestamp, fields: [
+    { id: '00000000-0000-4000-8000-000000000003', category: 'research', title: 'Research portfolio', subtitle: 'Projects, publications, and ideas', tags: ['Research'], favorite: false, notes: '', createdAt: '2026-01-02T09:00:00.000Z', updatedAt: '2026-01-08T09:00:00.000Z', fields: [
       { id: 'topic', label: 'Research area', labelZh: '研究方向', value: 'Human–computer interaction', kind: 'text', sensitive: false },
       { id: 'description', label: 'Summary', labelZh: '简介', value: 'Designing helpful tools for everyday work.', kind: 'multiline', sensitive: false },
     ] },
