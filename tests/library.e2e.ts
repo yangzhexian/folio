@@ -18,15 +18,15 @@ test('keeps creation and sorting in the list toolbar without repeated library la
   await expect(toolbar.getByRole('button', { name: 'New record', exact: true })).toBeVisible();
   await expect(toolbar.getByRole('combobox', { name: 'Sort records', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(0);
-  await expect(page.getByText('Personal library', { exact: true })).toHaveCount(1);
-  await expect(page.locator('.breadcrumb')).toContainText('Personal library');
+  await expect(page.getByText('Personal library', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.breadcrumb')).toHaveCount(0);
   for (const text of ['LOCAL', 'Stored on this device', 'Saved locally', 'Recently updated']) {
     await expect(page.getByText(text, { exact: true })).toHaveCount(0);
   }
   await page.getByRole('button', { name: 'Language', exact: true }).click();
   await expect(toolbar.getByRole('button', { name: '新建条目', exact: true })).toBeVisible();
   await expect(toolbar.getByRole('combobox', { name: '条目排序', exact: true })).toBeVisible();
-  await expect(page.getByText('个人信息库', { exact: true })).toHaveCount(1);
+  await expect(page.getByText('个人信息库', { exact: true })).toHaveCount(0);
   for (const text of ['本地', '仅存储在本机', '已保存到本机', '最近更新']) {
     await expect(page.getByText(text, { exact: true })).toHaveCount(0);
   }

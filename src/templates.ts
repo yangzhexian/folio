@@ -64,7 +64,6 @@ export const templates: RecordTemplate[] = [
       field('Home address', '家庭地址', 'multiline', true),
       field('Street or township', '街道或乡镇', 'text', true),
       field('Postal code', '邮政编码'),
-      field('Student rail destination', '学生票目的地'),
       field('Website', '个人网站', 'url'),
     ],
   },

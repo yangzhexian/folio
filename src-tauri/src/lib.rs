@@ -8,7 +8,7 @@ use storage::{display_path, Store};
 use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
 
-struct AppState(Mutex<Store>);
+struct AppState(Mutex<Result<Store>>);
 
 fn with_store<T>(
     state: &State<'_, AppState>,
@@ -18,7 +18,7 @@ fn with_store<T>(
         .0
         .lock()
         .map_err(|_| "The local vault is busy. Restart Folio to continue.".to_owned())?;
-    action(&store)
+    action(store.as_ref().map_err(Clone::clone)?)
 }
 
 async fn with_blocking_store<T: Send + 'static>(
@@ -130,6 +130,17 @@ async fn reveal_attachment(app: tauri::AppHandle, id: String) -> Result<()> {
 }
 
 #[tauri::command]
+async fn open_attachment(app: tauri::AppHandle, id: String) -> Result<()> {
+    let path = with_blocking_store(app, move |store| store.attachment_path(&id)).await?;
+    tauri::async_runtime::spawn_blocking(move || {
+        tauri_plugin_opener::open_path(display_path(&path), None::<&str>)
+            .map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
 async fn open_data_dir(app: tauri::AppHandle) -> Result<()> {
     let path = with_blocking_store(app, |store| Ok(display_path(store.root()))).await?;
     tauri::async_runtime::spawn_blocking(move || {
@@ -208,8 +219,19 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
-            let root = app.path().app_local_data_dir()?;
-            let store = Store::open(root).map_err(std::io::Error::other)?;
+            let store = (|| -> Result<Store> {
+                let executable = std::env::current_exe().map_err(|error| error.to_string())?;
+                let directory = executable
+                    .parent()
+                    .ok_or("Cannot locate the Folio installation folder.")?;
+                let legacy = app
+                    .path()
+                    .app_local_data_dir()
+                    .map_err(|error| error.to_string())?;
+                Store::open_installed(directory.join("data"), &legacy)
+            })();
+            // Surface initialization errors in the existing load-error UI instead of silently
+            // choosing another data folder or exiting before the user can read the error.
             app.manage(AppState(Mutex::new(store)));
             Ok(())
         })
@@ -224,6 +246,7 @@ pub fn run() {
             restore_attachment,
             attachment_path,
             reveal_attachment,
+            open_attachment,
             open_data_dir,
             export_backup,
             restore_backup

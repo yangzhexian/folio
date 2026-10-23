@@ -10,9 +10,9 @@ const initialSnapshot = {
     { id: researchId, category: 'research', title: 'Research record', subtitle: '', tags: [], favorite: false, notes: '', fields: [], createdAt: timestamp, updatedAt: timestamp },
   ],
   attachments: [
-    { id: 'passport', recordId: identityId, originalName: 'passport.pdf', fileName: 'identity__passport__123.pdf', relativePath: 'attachments/passport.pdf', absolutePath: 'C:\\SyntheticFolio\\attachments\\passport.pdf', size: 20, createdAt: timestamp },
-    { id: 'resume', recordId: identityId, originalName: 'resume.pdf', fileName: 'identity__resume__456.pdf', relativePath: 'attachments/resume.pdf', absolutePath: 'C:\\SyntheticFolio\\attachments\\resume.pdf', size: 30, createdAt: timestamp },
-    { id: 'report', recordId: researchId, originalName: 'report.pdf', fileName: 'research__report__789.pdf', relativePath: 'attachments/report.pdf', absolutePath: 'C:\\SyntheticFolio\\attachments\\report.pdf', size: 40, createdAt: timestamp },
+    { id: 'passport', recordId: identityId, originalName: 'passport.pdf', fileName: 'identity__passport__123456789abc.pdf', relativePath: 'attachments/passport.pdf', absolutePath: 'C:\\SyntheticFolio\\attachments\\passport.pdf', size: 20, createdAt: timestamp },
+    { id: 'resume', recordId: identityId, originalName: 'resume.pdf', fileName: 'identity_456789abcdef.pdf', relativePath: 'attachments/resume.pdf', absolutePath: 'C:\\SyntheticFolio\\attachments\\resume.pdf', size: 30, createdAt: timestamp },
+    { id: 'report', recordId: researchId, originalName: 'report.pdf', fileName: 'research_789abcdef123.pdf', relativePath: 'attachments/report.pdf', absolutePath: 'C:\\SyntheticFolio\\attachments\\report.pdf', size: 40, createdAt: timestamp },
   ],
 };
 
@@ -55,13 +55,23 @@ async function openMockDesktop(page: Page, empty = false) {
           const files = args.paths.map(path => {
             const originalName = path.split(/[\\\\/]/).pop();
             const id = 'import-' + (++state.importSerial);
-            return { id, recordId: record.id, originalName, fileName: record.category + '__' + originalName,
+            return { id, recordId: record.id, originalName, fileName: record.category + '_' + String(state.importSerial).padStart(12, '0') + '.' + originalName.split('.').pop(),
               relativePath: 'attachments/' + id, absolutePath: 'C:/SyntheticFolio/attachments/' + id,
               size: 123, createdAt: new Date().toISOString() };
           });
           state.snapshot.attachments.push(...files);
           if (state.failLoadAfterImport) { state.failLoadAfterImport = false; state.failNextLoad = true; }
           return structuredClone(files);
+        }
+        if (command === 'open_attachment') {
+          if (!state.snapshot.attachments.some(file => file.id === args.id)) throw new Error('Missing attachment');
+          return;
+        }
+        if (command === 'rename_attachment') {
+          const file = state.snapshot.attachments.find(file => file.id === args.id);
+          const record = state.snapshot.records.find(record => record.id === file.recordId);
+          file.fileName = record.category + '_' + args.name + '.pdf';
+          return structuredClone(file);
         }
         if (command.startsWith('plugin:window|')) return;
         throw new Error('Unmocked IPC command: ' + command);
@@ -102,7 +112,7 @@ test('imports native dropped paths into the open record and deduplicates repeate
   const calls = await importCalls(page);
   expect(calls).toHaveLength(1);
   expect(calls[0].args).toEqual({ recordId: identityId, paths: ['C:\\fixtures\\visa.pdf'] });
-  await expect(page.locator('.attachment-name strong').filter({ hasText: 'visa.pdf' })).toBeVisible();
+  await expect(page.locator('.attachment-name').filter({ hasText: 'visa.pdf' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Identity record', exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
@@ -125,7 +135,7 @@ test('lets Files view drops choose an existing record and cancels without import
   expect(calls).toHaveLength(1);
   expect(calls[0].args.recordId).toBe(researchId);
   await expect(page.getByRole('heading', { name: 'Research record', exact: true })).toBeVisible();
-  await expect(page.locator('.attachment-name strong').filter({ hasText: 'lab.pdf' })).toBeVisible();
+  await expect(page.locator('.attachment-name').filter({ hasText: 'lab.pdf' })).toBeVisible();
 });
 
 test('creates a document for an empty-library drop and rolls it back when import fails', async ({ page }) => {
@@ -146,7 +156,7 @@ test('creates a document for an empty-library drop and rolls it back when import
   const records = await page.evaluate(() => (window as any).__folioTest.snapshot.records);
   expect(records).toHaveLength(1);
   expect(records[0].category).toBe('documents');
-  await expect(page.locator('.attachment-name strong').filter({ hasText: 'certificate.pdf' })).toBeVisible();
+  await expect(page.locator('.attachment-name').filter({ hasText: 'certificate.pdf' })).toBeVisible();
 });
 
 test('retries only the reload when refreshing after a successful import fails', async ({ page }) => {
@@ -187,17 +197,47 @@ test('rejects drops during modal editing or an active import without duplicating
 
 test('filters individual file names, exposes full names, and distinguishes empty search results', async ({ page }) => {
   await openMockDesktop(page);
-  await expect(page.locator('.attachment-name strong').filter({ hasText: 'passport' })).toHaveAttribute('title', 'identity__passport__123.pdf');
+  await expect(page.locator('.attachment-name strong').filter({ hasText: 'passport' })).toHaveAttribute('title', 'identity__passport__123456789abc.pdf');
   await page.getByRole('button', { name: /^Files\s*3$/ }).click();
   const search = page.getByRole('textbox', { name: 'Search records, fields, files…' });
   await search.fill('passport');
   await expect(page.locator('.file-table-row')).toHaveCount(1);
-  await expect(page.locator('.file-name strong')).toHaveText('identity__passport__123.pdf');
-  await expect(page.locator('.file-name strong')).toHaveAttribute('title', 'identity__passport__123.pdf');
+  await expect(page.locator('.file-name strong')).toHaveText('identity__passport__123456789abc.pdf');
+  await expect(page.locator('.file-name strong')).toHaveAttribute('title', 'identity__passport__123456789abc.pdf');
   await search.fill('Identity record');
   await expect(page.locator('.file-table-row')).toHaveCount(2);
   await search.fill('nonexistent.pdf');
   await expect(page.getByRole('heading', { name: 'No matching files', exact: true })).toBeVisible();
   await page.locator('.file-library').getByRole('button', { name: 'Clear search', exact: true }).click();
   await expect(page.locator('.file-table-row')).toHaveCount(3);
+});
+
+test('opens attachments from both views through the native managed-file command', async ({ page }) => {
+  await openMockDesktop(page);
+  await page.getByRole('button', { name: 'Open file: identity__passport__123456789abc.pdf', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__folioTest.calls.filter((call: any) => call.command === 'open_attachment'))).toEqual([{ command: 'open_attachment', args: { id: 'passport' } }]);
+  await page.getByRole('button', { name: /^Files\s*3$/ }).click();
+  await page.getByRole('button', { name: 'Open file: identity_456789abcdef.pdf', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__folioTest.calls.filter((call: any) => call.command === 'open_attachment').map((call: any) => call.args.id))).toEqual(['passport', 'resume']);
+  await page.getByRole('button', { name: 'Language', exact: true }).click();
+  await expect(page.getByRole('button', { name: '打开文件: research_789abcdef123.pdf', exact: true })).toBeVisible();
+});
+
+test('edits the generated suffix and converts legacy names on explicit rename', async ({ page }) => {
+  await openMockDesktop(page);
+  const resume = page.locator('.attachment-row').filter({ hasText: 'identity_456789abcdef.pdf' });
+  await resume.getByRole('button', { name: 'Rename', exact: true }).click();
+  const rename = page.getByRole('dialog', { name: 'Rename', exact: true });
+  await expect(rename.getByLabel('File name', { exact: true })).toHaveValue('456789abcdef');
+  await rename.getByLabel('File name', { exact: true }).fill('resume_2026');
+  await rename.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(rename).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Open file: identity_resume_2026.pdf', exact: true })).toBeVisible();
+  await page.locator('.attachment-row').filter({ hasText: 'identity__passport__123456789abc.pdf' }).getByRole('button', { name: 'Rename', exact: true }).click();
+  await expect(rename.getByLabel('File name', { exact: true })).toHaveValue('passport');
+  await rename.getByLabel('File name', { exact: true }).fill('passport_current');
+  await rename.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(rename).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Open file: identity_passport_current.pdf', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__folioTest.calls.filter((call: any) => call.command === 'rename_attachment').map((call: any) => call.args))).toEqual([{ id: 'resume', name: 'resume_2026' }, { id: 'passport', name: 'passport_current' }]);
 });

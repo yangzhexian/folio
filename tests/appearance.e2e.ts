@@ -37,6 +37,13 @@ test('applies every accent in light and dark modes and supports the quick theme 
       await settings.getByRole('button', { name: accent, exact: true }).click();
       await expect(settings.getByRole('button', { name: accent, exact: true })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.locator('html')).toHaveAttribute('data-accent', accent.toLowerCase());
+      const centers = await settings.getByRole('button', { name: accent, exact: true }).evaluate(button => {
+        const ring = button.getBoundingClientRect();
+        const swatch = button.querySelector('.accent-swatch')!.getBoundingClientRect();
+        return { x: Math.abs(ring.x + ring.width / 2 - swatch.x - swatch.width / 2), y: Math.abs(ring.y + ring.height / 2 - swatch.y - swatch.height / 2) };
+      });
+      expect(centers.x).toBeLessThanOrEqual(0.5);
+      expect(centers.y).toBeLessThanOrEqual(0.5);
       renderedColors.add(await page.locator('.compact-create').evaluate(node => getComputedStyle(node).backgroundColor));
     }
     expect(renderedColors.size).toBe(5);

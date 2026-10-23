@@ -14,5 +14,6 @@ playwright-report/
 *.db-wal
 *.sqlite*
 local-data/
+data/
 artifacts/
 .DS_Store

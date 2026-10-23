@@ -5,11 +5,12 @@ A small desktop library for personal details, education, experience, research, c
 ## Features
 
 - Create records from bilingual templates or start with custom fields.
-- Search titles, field names, values, notes, tags, and attachment names; filter by collection or favorites.
+- Search titles, field names, values, notes, tags, and attachment names with bilingual field synonyms; copy or locate matching fields directly from results.
+- Insert fields at any position and reorder them by dragging or keyboard; navigate the date calendar by month or year.
 - Sort records by modification time, creation time, or title in either direction; keep the chosen order across sessions.
 - Copy individual values or a formatted record. Sensitive fields are masked in the detail view and excluded from full-record copying.
 - Keep multiple education, work, project, publication, award, certificate, or contact records without forcing everything into a single form.
-- Attach local files, give them consistent names, copy their full paths, and reveal them in the system file manager.
+- Attach local files, give them consistent names, open them with the default application, copy their full paths, and reveal them in the system file manager.
 - Drop files onto a record, or choose a destination after dropping into the file library.
 - Use light or dark appearance with five accent colors; the default remains light sage.
 - Export a local backup and restore an existing library from it.
@@ -37,27 +38,33 @@ To inspect just the interface, run `npm run dev` and open `http://127.0.0.1:1420
 
 Choose **New** in the record list toolbar, select a template, and fill only the fields you need. At compact window widths, this button appears as **+**, with a **New record** tooltip. **Edit** lets you change the title, collection, tags, notes, and field definitions; custom fields can also have separate English and Chinese labels. Search accepts multiple words, including Chinese text, and requires every word to match somewhere in a record or its attachment names.
 
+Matching fields appear under each record in search results, with a copy action and a click target that scrolls to the field in the detail pane. Sensitive values remain masked in these results. Search recognizes common variants such as `QQ 号` / `QQ号`, `mobile` / `phone` / `手机` / `手机号`, and `document number` / `证件号` / `身份证号`, plus email, WeChat, address, postal code, and birth-date labels. Synonyms are based on field names; literal values remain searchable.
+
+Each field has an **Add field** control below it that inserts immediately after that field. A control above the first field inserts at the beginning. Drag a field's grip to reorder it; holding near the editor's top or bottom scrolls the list, and **Escape** cancels the drag. With a grip focused, **Up**, **Down**, **Home**, and **End** move the field while preserving its contents. Open a date field's calendar to browse dates. Its header places **Previous year** and **Next year** outside the month navigation buttons. Browsing months or years only changes the displayed calendar; the field changes when a day is selected. Dates can also be entered as `YYYY-MM-DD`. New contact templates no longer include a student rail destination; existing saved fields are preserved.
+
 The list toolbar also offers six sort orders: modification time or creation time with newest or oldest first, and title in ascending or descending order. The default is most recently modified first. The chosen order persists across searches, collections, language changes, and restarts; changing it keeps the current record selected. Title ordering follows the interface language and compares embedded numbers naturally.
 
 Use the star to keep frequently used records in **Favorites**. Individual field copy buttons copy the actual value, including a sensitive value when explicitly requested. **Copy record** omits fields marked sensitive. Masking is a display convenience rather than encryption, and searching still includes sensitive field values. Notes and ordinary fields are copied as entered, so place values that need masking in a sensitive field.
 
-Use **Add files** from a saved record to copy supporting documents into the managed library. Import keeps the original file in its original location. The file library provides rename, copy-path, and show-in-folder actions. Change the interface language in **Settings**; this changes interface and template labels without translating your own record content.
+Use **Add files** from a saved record to copy supporting documents into the managed library. Import keeps the original file in its original location. Click a managed filename in either view to open it with the operating system's default application. The file library also provides rename, copy-path, and show-in-folder actions. Change the interface language in **Settings**; this changes interface and template labels without translating your own record content.
 
 Drag one or more files from Windows Explorer onto Folio to import them. When a record is open, the drop overlay shows its title and files attach to that record. In **Files**, an empty library, or a view without a selected record, dropping opens a destination chooser: select an existing record or create a document record with an editable title. Canceling the chooser leaves files untouched. Close open dialogs before dropping files, and wait for a running import to finish. A failed new-document import removes its empty record so the operation can be retried; a failed reload after a completed import only retries loading, avoiding duplicate copies. Drag import accepts local regular files, not folders, URLs, network shares, or Windows alternate streams. The same size and batch limits as file-picker import apply.
 
 Open **Settings → Appearance** to choose **Light** or **Dark** and one of **Sage**, **Blue**, **Violet**, **Rose**, or **Amber**. The sun/moon button in the top bar switches appearance quickly. **Reset appearance** restores the original light sage theme. Theme and color preferences persist across restarts, and the desktop title bar follows the selected light/dark mode.
 
-Managed files follow `collection__title__12-character-id.extension`, for example `education__Masters-degree__a1b2c3d4e5f6.pdf`. Spaces become hyphens, unsafe filename characters are sanitized, and Unicode names are retained. The identifier prevents collisions. Rename changes the descriptive part while keeping a safe extension and unique identifier. A single import accepts up to 100 regular files, with a maximum of 2 GiB per file.
+New managed files follow `collection_12-character-id.extension`, for example `identity_9cedf69724b8.pdf`. **Rename** edits that generated suffix, so entering `passport` produces `identity_passport.pdf`; the collection prefix and safe extension are retained automatically. Spaces become hyphens, unsafe filename characters are sanitized, and Unicode names are retained. Files are stored in separate record folders, and conflicting names within a record are rejected without overwriting either file. Existing filenames remain usable and only change when explicitly renamed. A single import accepts up to 100 regular files, with a maximum of 2 GiB per file.
 
 ## Privacy and storage
 
 Folio does not require an account, run a cloud synchronization service, or send your personal records to a remote server. The desktop frontend is bundled with the application and uses Tauri commands for local storage operations. The production content security policy does not allow remote network connections.
 
-The SQLite database, managed attachments, and exported backups are **not encrypted**. Anyone with access to those files can read their contents. Use the operating system's account permissions and disk encryption if that protection is needed. Copying a value places it on the operating system clipboard, which may also be visible to clipboard history or other applications. Windows can redirect application data when launched from a packaged host; **Settings → Data folder** shows the actual resolved storage location.
+The SQLite database, managed attachments, and exported backups are **not encrypted**. Anyone with access to those files can read their contents. Use the operating system's account permissions and disk encryption if that protection is needed. Copying a value places it on the operating system clipboard, which may also be visible to clipboard history or other applications. **Settings → Data folder** shows the actual resolved storage location.
 
 Private sample files are not included in this repository. Git ignores databases, local data directories, build outputs, and test artifacts. Templates describe common information fields; the desktop library starts empty.
 
-On Windows, the default application data directory is `%LOCALAPPDATA%\dev.folio.desktop`. **Settings → Data folder** shows the actual path and provides copy and open actions. The active library contains `vault\folio.sqlite3` and `vault\attachments\<record-id>\<managed-filename>`. Interface language, record sorting, theme, and accent preferences are stored in the local webview's storage.
+The default data directory is `data` beside `Folio.exe`, inside the installation folder. **Settings → Data folder** shows the actual path and provides copy and open actions. The active library contains `data\vault\folio.sqlite3` and `data\vault\attachments\<record-id>\<managed-filename>`. The Windows installer uses a per-user installation; its generated update and uninstall routines preserve this data folder. A custom installation folder must be writable by the current user. Folio shows an actionable error if it cannot write there and never silently selects another location. Interface language, record sorting, theme, and accent preferences are stored in the local webview's storage.
+
+On the first launch without an installation vault, Folio copies an existing library from its previous application-data location (normally `%LOCALAPPDATA%\dev.folio.desktop`). Close other Folio instances before upgrading. Migration validates a staged copy before activating it and leaves the old library untouched. An existing installation vault always takes precedence and is never overwritten by migration. Recovery folders copied from the old location remain under `data\migration-<uuid>`; interrupted completed copies can resume on the next launch. Moving the executable to a different folder also changes its data location, so move the adjacent `data` folder with it to keep using that library.
 
 Deleting a record or removing an attachment hides it from the library and offers **Undo** for 12 seconds. The underlying data and files remain on disk; deletion is not secure erasure, and there is no trash management or permanent-purge interface in this version. After the undo notification expires, recovery requires a backup or manual recovery of the local data.
 
@@ -77,6 +84,8 @@ The current backup format is version 1. Limits are 2 GiB per attachment, 10 GiB 
 | `src/templates.ts` | Bilingual record templates and empty-record creation |
 | `src/i18n.ts` | English and Simplified Chinese interface text |
 | `src/domain.ts` | Search, localized labels, copy formatting, and file-size formatting |
+| `src/FieldEditor.tsx` / `src/fieldEditing.ts` | Pointer and keyboard field ordering and positional insertion |
+| `src/DatePicker.tsx` | Editable dates and an inline calendar with month/year navigation |
 | `src/sorting.ts` | Chronological and localized title ordering, stable ties, and saved preference validation |
 | `src/theme.ts` | Appearance preferences and theme application |
 | `src/useFileDrop.ts` | Native drop-event lifecycle and browser navigation protection |

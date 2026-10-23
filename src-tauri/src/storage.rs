@@ -13,6 +13,8 @@ const MAX_BACKUP_SIZE: u64 = 10 * 1024 * 1024 * 1024;
 const MAX_MANIFEST_SIZE: u64 = 32 * 1024 * 1024;
 const MAX_BACKUP_ENTRIES: usize = 100_001;
 
+mod migration;
+
 fn err(error: impl std::fmt::Display) -> String {
     error.to_string()
 }
@@ -179,10 +181,10 @@ impl Store {
                     .ok_or("Invalid source filename.")?
                     .to_owned();
                 let id = Uuid::new_v4().to_string();
+                let suffix = id.replace('-', "");
                 let file_name = managed_name(
                     &record.category,
-                    &record.title,
-                    &id,
+                    &suffix[..12],
                     safe_extension(source).as_deref(),
                 );
                 let relative_path = format!("attachments/{record_id}/{file_name}");
@@ -257,7 +259,6 @@ impl Store {
         let new_name = managed_name(
             &record.category,
             name,
-            id,
             safe_extension(Path::new(&attachment.file_name)).as_deref(),
         );
         if new_name == attachment.file_name {
@@ -860,14 +861,9 @@ pub fn safe_stem(value: &str) -> String {
     cleaned
 }
 
-fn managed_name(category: &str, title: &str, id: &str, extension: Option<&str>) -> String {
-    let suffix = id.replace('-', "");
-    let base = format!(
-        "{}__{}__{}",
-        safe_stem(category),
-        safe_stem(title),
-        &suffix[..12]
-    );
+fn managed_name(category: &str, suffix: &str, extension: Option<&str>) -> String {
+    let suffix = safe_stem(suffix);
+    let base = format!("{}_{}", safe_stem(category), suffix.trim_start_matches('_'));
     match extension {
         Some(value) => format!("{base}.{value}"),
         None => base,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fieldLabel, filterAttachments, filterRecords, formatBytes, formatRecord } from './domain';
+import { fieldLabel, filterAttachments, filterRecords, findMatchingFields, formatBytes, formatRecord } from './domain';
 import { createRecord, templates } from './templates';
 import type { Attachment, Field, ProfileRecord } from './types';
 
@@ -48,6 +48,101 @@ describe('file search', () => {
     expect(filterAttachments([record()], [attachment, sibling, orphan], '学校 transcript')).toEqual([attachment]);
     expect(filterAttachments([record()], [attachment, sibling, orphan], 'University')).toEqual([attachment, sibling]);
     expect(filterAttachments([record()], [attachment, orphan], '')).toEqual([attachment]);
+  });
+
+  it('combines label aliases with the individual filename without leaking sibling matches', () => {
+    const parent = record({ fields: [field({ label: 'Mobile', labelZh: undefined, value: '13800000000' })] });
+    expect(filterAttachments([parent], [attachment, sibling], '手机号 transcript')).toEqual([attachment]);
+    expect(filterAttachments([parent], [attachment, sibling], '手机 transcript diploma')).toEqual([]);
+  });
+
+  it('retains literal AND matching when words from an alias phrase occur across parent and file', () => {
+    const parent = record({ title: 'Application ID' });
+    const file = { ...attachment, fileName: 'application__number.pdf', originalName: 'number.pdf' };
+    expect(filterAttachments([parent], [file], 'id number')).toEqual([file]);
+    expect(filterRecords([parent], [file], 'id number', 'all')).toEqual([parent]);
+  });
+});
+
+describe('bilingual label aliases', () => {
+  it.each([
+    ['QQ', 'QQ 号'], ['QQ 号', 'qq号'], ['QQ账号', 'ＱＱ　号'], ['QQ number', 'qQ\t号'],
+    ['Mobile', '手机号'], ['手机号', 'phone'], ['手机号码', 'ＭＯＢＩＬＥ'], ['Phone number', '手机'], ['联系电话', 'mobile phone'],
+    ['Document number', '证件号'], ['ID number', '证件号码'], ['证件号码', 'ID number'], ['证件号', 'document number'],
+    ['Email address', '电子邮箱'], ['邮箱', 'e-mail'], ['WeChat ID', '微信号'], ['微信', 'wechat'],
+    ['Mailing address', '通讯地址'], ['通信地址', 'address'], ['邮编', 'postal code'], ['Date of birth', '出生日期'],
+  ])('matches field label %s with query %s without needing a translation', (label, query) => {
+    const item = record({ fields: [field({ label, labelZh: undefined, value: 'sample-value' })] });
+    expect(filterRecords([item], [], query, 'all')).toEqual([item]);
+    expect(findMatchingFields(item, query)).toEqual(item.fields);
+  });
+
+  it('also learns aliases from Chinese labels while respecting all query terms', () => {
+    const item = record({ title: 'Contact details', fields: [field({ label: 'Primary contact', labelZh: '手 机 号', value: '13800000000' })] });
+    expect(filterRecords([item], [], 'contact PHONE 138', 'all')).toEqual([item]);
+    expect(filterRecords([item], [], 'contact phone 999', 'all')).toEqual([]);
+    expect(findMatchingFields(item, 'contact phone 138')).toEqual(item.fields);
+  });
+
+  it('does not infer label concepts from unrelated word fragments, notes, or values', () => {
+    const items = [
+      record({ id: 'headphones', fields: [field({ label: 'Headphone model', labelZh: undefined, value: 'Example' })] }),
+      record({ id: 'automobile', fields: [field({ label: 'Automobile', labelZh: undefined, value: 'Example' })] }),
+      record({ id: 'mobile-notes', notes: 'Mobile games', fields: [] }),
+      record({ id: 'mobile-value', fields: [field({ value: 'Mobile games' })] }),
+    ];
+    expect(filterRecords(items, [], '手机号', 'all')).toEqual([]);
+    expect(filterRecords([record({ fields: [field({ label: 'Project ID', labelZh: undefined, value: 'P-42' })] })], [], '证件号码', 'all')).toEqual([]);
+    expect(filterRecords([record({ fields: [field({ label: 'Paid number', labelZh: undefined, value: '42' })] })], [], '证件号', 'all')).toEqual([]);
+    expect(filterRecords(items, [], 'mobile games', 'all').map(item => item.id)).toEqual(['mobile-notes', 'mobile-value']);
+  });
+
+  it('keeps generic address aliases distinct from email addresses', () => {
+    const email = field({ id: 'email', label: 'Email address', labelZh: undefined, value: 'alex@example.com' });
+    const address = field({ id: 'address', label: 'Street address', labelZh: undefined, value: 'Example Road' });
+    const item = record({ fields: [email, address] });
+    expect(findMatchingFields(item, 'email address')).toEqual([email]);
+    expect(findMatchingFields(item, '通讯地址')).toEqual([address]);
+  });
+});
+
+describe('matching field results', () => {
+  const phone = field({ id: 'phone', label: 'Mobile', labelZh: '手机号', value: '13800000000' });
+  const email = field({ id: 'email', label: 'Email', labelZh: '邮箱', value: 'alex@example.com' });
+  const secret = field({ id: 'secret', label: 'ID number', labelZh: '证件号码', value: 'SYNTHETIC-PRIVATE-123', sensitive: true });
+  const item = record({ category: 'contacts', title: 'Contact details', tags: ['Application'], fields: [phone, email, secret] });
+
+  it('returns matching fields in record order with parent and sibling fields supplying query context', () => {
+    expect(findMatchingFields(item, 'contact mobile')).toEqual([phone]);
+    expect(findMatchingFields(item, 'APPLICATION 手机 138')).toEqual([phone]);
+    expect(findMatchingFields(item, 'phone email')).toEqual([phone, email]);
+    expect(findMatchingFields(item, 'contact example.com')).toEqual([email]);
+    expect(findMatchingFields(item, '手机 absent')).toEqual([]);
+  });
+
+  it('does not return all fields for empty or metadata-only queries', () => {
+    expect(findMatchingFields(item, '')).toEqual([]);
+    expect(findMatchingFields(item, ' \t\n ')).toEqual([]);
+    expect(findMatchingFields(item, 'application')).toEqual([]);
+    expect(findMatchingFields(item, 'contact details')).toEqual([]);
+  });
+
+  it('returns original sensitive fields without exposing their value through copying or mutating flags', () => {
+    const matches = findMatchingFields(item, '证件号');
+    expect(matches).toEqual([secret]);
+    expect(matches[0]).toBe(secret);
+    expect(matches[0].sensitive).toBe(true);
+    expect(findMatchingFields(item, 'synthetic-private')).toEqual([secret]);
+    expect(formatRecord(item, 'en')).not.toContain(secret.value);
+    expect(secret.value).toBe('SYNTHETIC-PRIVATE-123');
+  });
+
+  it('allows empty matching fields and normalizes spacing inside QQ labels and literal values', () => {
+    const empty = field({ id: 'qq', label: 'QQ 号', labelZh: undefined, value: '' });
+    const literal = field({ id: 'literal', label: 'Custom', labelZh: undefined, value: 'QQ 号' });
+    const example = record({ fields: [empty, literal] });
+    expect(findMatchingFields(example, 'qq号')).toEqual([empty, literal]);
+    expect(findMatchingFields(example, 'ＱＱ　号')).toEqual([empty, literal]);
   });
 });
 

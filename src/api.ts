@@ -49,6 +49,7 @@ export const api = {
   },
   path: (id: string) => invoke<string>('attachment_path', { id }),
   reveal: (id: string) => invoke<void>('reveal_attachment', { id }),
+  open: (id: string) => invoke<void>('open_attachment', { id }),
   rename: (id: string, name: string) => invoke<Attachment>('rename_attachment', { id, name }),
   remove: async (id: string) => {
     if (desktop) return invoke<void>('remove_attachment', { id });

@@ -68,17 +68,21 @@ fn attachments_are_copied_named_and_deleted_reversibly() {
         attachments[0].metadata.file_name,
         attachments[1].metadata.file_name
     );
-    assert!(attachments[0]
-        .metadata
-        .file_name
-        .starts_with("identity__个人资料__"));
+    assert!(attachments[0].metadata.file_name.starts_with("identity_"));
+    assert_eq!(
+        attachments[0].metadata.file_name,
+        format!(
+            "identity_{}.pdf",
+            &attachments[0].metadata.id.replace('-', "")[..12]
+        )
+    );
     assert_eq!(fs::read(&original).unwrap(), b"private example");
     let id = &attachments[0].metadata.id;
     let renamed = store.rename_attachment(id, "证件: 正面?").unwrap();
     assert!(renamed
         .metadata
         .file_name
-        .starts_with("identity__证件_-正面__"));
+        .starts_with("identity_证件_-正面"));
     assert!(renamed.metadata.file_name.ends_with(".pdf"));
     assert!(store.rename_attachment(id, "../../escape").is_err());
     assert!(store.rename_attachment(id, "C:\\escape").is_err());
@@ -91,6 +95,114 @@ fn attachments_are_copied_named_and_deleted_reversibly() {
     assert!(store.snapshot().unwrap().attachments.is_empty());
     store.save_record(record).unwrap();
     assert_eq!(store.snapshot().unwrap().attachments.len(), 2);
+}
+
+#[test]
+fn editable_attachment_suffix_replaces_id_and_collisions_never_overwrite() {
+    let (temp, store) = store();
+    let saved = store.save_record(record()).unwrap();
+    let first = source(&temp, "one.pdf", b"first document");
+    let second = source(&temp, "two.pdf", b"second document");
+    let imported = store
+        .import_files(&saved.id, &[first.clone(), second])
+        .unwrap();
+    let renamed = store
+        .rename_attachment(&imported[0].metadata.id, "passport")
+        .unwrap();
+    assert_eq!(renamed.metadata.file_name, "identity_passport.pdf");
+    assert!(store
+        .rename_attachment(&imported[1].metadata.id, "passport")
+        .is_err());
+    assert_eq!(
+        fs::read(store.attachment_path(&imported[0].metadata.id).unwrap()).unwrap(),
+        b"first document"
+    );
+    assert_eq!(
+        fs::read(store.attachment_path(&imported[1].metadata.id).unwrap()).unwrap(),
+        b"second document"
+    );
+    let another_record = store.save_record(record()).unwrap();
+    let another = store
+        .import_files(&another_record.id, &[first])
+        .unwrap()
+        .remove(0);
+    assert_eq!(
+        store
+            .rename_attachment(&another.metadata.id, "passport")
+            .unwrap()
+            .metadata
+            .file_name,
+        "identity_passport.pdf"
+    );
+}
+
+#[test]
+fn legacy_attachment_names_stay_readable_until_explicit_rename() {
+    let (temp, store) = store();
+    let saved = store.save_record(record()).unwrap();
+    let original = source(&temp, "legacy.pdf", b"legacy document");
+    let imported = store
+        .import_files(&saved.id, &[original])
+        .unwrap()
+        .remove(0);
+    let mut legacy = imported.metadata;
+    let current_path = store.attachment_path(&legacy.id).unwrap();
+    legacy.file_name = "identity__old-title__123456789abc.pdf".into();
+    legacy.relative_path = format!("attachments/{}/{}", saved.id, legacy.file_name);
+    fs::rename(current_path, store.vault().join(&legacy.relative_path)).unwrap();
+    let db = store.connection().unwrap();
+    db.execute(
+        "UPDATE attachments SET body=?1 WHERE id=?2",
+        params![serde_json::to_string(&legacy).unwrap(), legacy.id],
+    )
+    .unwrap();
+    drop(db);
+    assert_eq!(
+        store.snapshot().unwrap().attachments[0].metadata.file_name,
+        legacy.file_name
+    );
+    assert_eq!(
+        fs::read(store.attachment_path(&legacy.id).unwrap()).unwrap(),
+        b"legacy document"
+    );
+    assert_eq!(
+        store
+            .rename_attachment(&legacy.id, "passport")
+            .unwrap()
+            .metadata
+            .file_name,
+        "identity_passport.pdf"
+    );
+}
+
+#[test]
+fn opening_path_requires_an_active_managed_regular_file() {
+    let (temp, store) = store();
+    let saved = store.save_record(record()).unwrap();
+    let original = source(&temp, "note.txt", b"note");
+    let imported = store
+        .import_files(&saved.id, &[original])
+        .unwrap()
+        .remove(0);
+    let path = store.attachment_path(&imported.metadata.id).unwrap();
+    assert!(path.starts_with(store.vault()));
+    assert!(store.attachment_path("../../outside").is_err());
+    assert!(store.attachment_path(&Uuid::new_v4().to_string()).is_err());
+    store.remove_attachment(&imported.metadata.id).unwrap();
+    assert!(store.attachment_path(&imported.metadata.id).is_err());
+    store.restore_attachment(&imported.metadata.id).unwrap();
+    fs::remove_file(&path).unwrap();
+    fs::create_dir(&path).unwrap();
+    assert!(store.attachment_path(&imported.metadata.id).is_err());
+    let mut corrupted = imported.metadata;
+    corrupted.relative_path = "../outside.txt".into();
+    let db = store.connection().unwrap();
+    db.execute(
+        "UPDATE attachments SET body=?1 WHERE id=?2",
+        params![serde_json::to_string(&corrupted).unwrap(), corrupted.id],
+    )
+    .unwrap();
+    assert!(store.attachment_path(&corrupted.id).is_err());
 }
 
 #[test]
@@ -139,10 +251,7 @@ fn dropped_files_use_managed_names_and_preserve_originals() {
         .unwrap();
     assert_eq!(imported.len(), 1);
     assert_eq!(imported[0].metadata.original_name, "个人证件.pdf");
-    assert!(imported[0]
-        .metadata
-        .file_name
-        .starts_with("identity__个人资料__"));
+    assert!(imported[0].metadata.file_name.starts_with("identity_"));
     assert!(imported[0].metadata.file_name.ends_with(".pdf"));
     assert_eq!(fs::read(&original).unwrap(), b"local document");
     assert_eq!(

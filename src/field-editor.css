@@ -1,0 +1,24 @@
+.field-editor.editor-fields { gap: 0; margin-bottom: 24px; min-width: 0; }
+.field-editor-item { position: relative; min-width: 0; }
+.field-editor .editor-field { min-width: 0; }
+.field-editor .editor-field-heading { display: grid; grid-template-columns: 26px 22px minmax(0, 1fr) minmax(0, 1fr) 28px; gap: 6px; }
+.field-editor .editor-field-heading input { min-width: 0; }
+.field-drag-handle { display: inline-grid; place-items: center; width: 26px; height: 30px; padding: 0; color: var(--muted); border-radius: 4px; cursor: grab; touch-action: none; user-select: none; }
+.field-drag-handle:hover:not(:disabled) { color: var(--accent); background: var(--accent-soft); }
+.field-drag-handle:active { cursor: grabbing; }
+.field-editor.is-reordering { user-select: none; cursor: grabbing; }
+.field-editor-item.is-dragging > .editor-field { opacity: .6; border-color: var(--accent); border-style: dashed; }
+.field-editor-item.drop-before::before { content: ""; position: absolute; top: -3px; left: 0; right: 0; height: 3px; border-radius: 2px; background: var(--accent); z-index: 1; pointer-events: none; }
+.field-drop-end { height: 0; border-top: 3px solid transparent; border-radius: 2px; }
+.field-drop-end.active { border-color: var(--accent); }
+.field-insert { display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 28px; margin: 4px auto; padding: 4px 9px; color: var(--muted); font-size: 11px; border-radius: 5px; }
+.field-insert:hover:not(:disabled) { color: var(--accent); background: var(--accent-soft); }
+.field-insert-start { align-self: center; margin: 0 auto 8px; }
+.field-editor .add-field-button { align-self: center; margin: 0 auto; }
+.field-editor-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+@media (max-width: 760px) {
+  .field-editor .editor-field-heading { grid-template-columns: 24px 20px minmax(0, 1fr) 28px; }
+  .field-editor .editor-field-heading input:nth-of-type(2) { grid-column: 3; grid-row: 2; }
+  .field-editor .editor-field-heading > .icon-button { grid-column: 4; grid-row: 1; }
+}
