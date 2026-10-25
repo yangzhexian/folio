@@ -15,6 +15,7 @@ A small desktop library for personal details, education, experience, research, c
 - Copy individual values or a formatted record. Sensitive fields are masked in the detail view and excluded from full-record copying.
 - Keep multiple education, work, project, publication, award, certificate, or contact records without forcing everything into a single form.
 - Attach local files, give them consistent names, open them with the default application, copy their full paths, and reveal them in the system file manager.
+- Preview PNG, JPG/JPEG, and PDF attachments inside Folio with zoom, attachment switching, and PDF page navigation; all decoding happens locally.
 - Drop files onto a record, or choose a destination after dropping into the file library.
 - Use light or dark appearance with five accent colors; the default remains light sage.
 - Export a local backup and restore an existing library from it.
@@ -50,7 +51,11 @@ The list toolbar also offers six sort orders: modification time or creation time
 
 Use the star to keep frequently used records in **Favorites**. Individual field copy buttons copy the actual value, including a sensitive value when explicitly requested. **Copy record** omits fields marked sensitive. Masking is a display convenience rather than encryption, and searching still includes sensitive field values. Notes and ordinary fields are copied as entered, so place values that need masking in a sensitive field.
 
-Use **Add files** from a saved record to copy supporting documents into the managed library. Import keeps the original file in its original location. Click a managed filename in either view to open it with the operating system's default application. The file library also provides rename, copy-path, and show-in-folder actions. Change the interface language in **Settings**; this changes interface and template labels without translating your own record content.
+Use **Add files** from a saved record to copy supporting documents into the managed library. Import keeps the original file in its original location. Click a PNG, JPG/JPEG, or PDF filename to preview it inside Folio; other formats open with the operating system's default application. The preview also provides **Open externally**, **Copy path**, and **Show in folder**. Change the interface language in **Settings**; this changes interface and template labels without translating your own record content.
+
+The preview's top arrows switch between supported attachments in the current record, or the current filtered results in **Files**. Use the bottom controls to zoom from 25% to 400% relative to the fitted view and return to **Fit to view**. Drag an enlarged image or PDF page to pan; scrolling remains available. PDFs provide previous/next page and direct page entry. **Left/Right** switch attachments, **Page Up/Page Down** turn PDF pages, **+/-** zoom, **0** fits the view, and **Escape** closes the preview and returns focus to the filename. Shortcuts do not interfere with page-number entry.
+
+Preview reads only active managed attachments by ID and never changes their contents. Images are limited to 32 MiB, 16,384 pixels on either side, and 40 million pixels in total; PDFs are limited to 64 MiB. Large, unavailable, damaged, or password-protected files show a concise fallback message and can still be opened externally. PDF.js, its worker, fonts, character maps, color profiles, and decoders ship with the application. No file is uploaded and no CDN or hosted viewer is used. PDF preview renders pages without running document scripts or interactive forms. PDF text selection, document search, OCR, and an in-app password prompt are not part of this version.
 
 Drag one or more files from Windows Explorer onto Folio to import them. When a record is open, the drop overlay shows its title and files attach to that record. In **Files**, an empty library, or a view without a selected record, dropping opens a destination chooser: select an existing record or create a document record with an editable title. Canceling the chooser leaves files untouched. Close open dialogs before dropping files, and wait for a running import to finish. A failed new-document import removes its empty record so the operation can be retried; a failed reload after a completed import only retries loading, avoiding duplicate copies. Drag import accepts local regular files, not folders, URLs, network shares, or Windows alternate streams. The same size and batch limits as file-picker import apply.
 
@@ -94,6 +99,8 @@ The current backup format is version 1. Limits are 2 GiB per attachment, 10 GiB 
 | `src/theme.ts` | Appearance preferences and theme application |
 | `src/useFileDrop.ts` | Native drop-event lifecycle and browser navigation protection |
 | `src/api.ts` | Tauri command bridge and isolated in-memory browser preview |
+| `src/AttachmentPreview.tsx` / `src/PdfPreview.tsx` | Bilingual attachment viewer, bounded image/PDF rendering, navigation, and resource cleanup |
+| `src-tauri/src/storage/preview.rs` | Active-file authorization, bounded binary reads, and format/dimension validation |
 | `src-tauri/src/` | SQLite persistence, native dialogs, attachment operations, and backup handling |
 | `src-tauri/capabilities/` | Native capabilities exposed to the application window |
 | `tests/*.e2e.ts` | Browser interface regression tests with synthetic records |
@@ -105,13 +112,13 @@ The next priorities are below. These are proposed improvements, not features in 
 
 | Order | Focus | Planned outcome |
 | --- | --- | --- |
-| 1 | Built-in attachment preview | Preview PNG/JPG images and then PDFs inside Folio, with zoom, navigation, and an explicit option to open externally. |
+| 1 | Preview follow-ups | Build on the shipped image/PDF viewer with temporary image rotation, PDF text selection and search, and measured improvements for larger documents. |
 | 2 | Everyday experience | Recover unsaved drafts, improve keyboard access and import feedback, remember workspace layout, and support reusable personal templates. |
 | 3 | Recovery and maintenance | Restore deleted items from a persistent Trash view, improve backup visibility and verification, and report missing or changed attachments. |
 | 4 | Larger libraries | Measure performance, add targeted search and list improvements, and consider mapped CSV/JSON imports, batch actions, and optional offline OCR. |
 | 5 | Optional protection | Evaluate encryption for the complete vault, including attachments, indexes, drafts, previews, and backups. |
 
-All planned storage and processing remain local. Image preview is the first proposed milestone, followed by a locally bundled PDF viewer.
+Version 0.4.0 delivers the first attachment-preview milestone: PNG/JPG/JPEG and PDF viewing, zoom, attachment switching, and PDF page navigation. All planned storage and processing remain local.
 
 ## Rebuilding the introduction
 

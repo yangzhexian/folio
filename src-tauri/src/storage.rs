@@ -14,6 +14,7 @@ const MAX_MANIFEST_SIZE: u64 = 32 * 1024 * 1024;
 const MAX_BACKUP_ENTRIES: usize = 100_001;
 
 mod migration;
+mod preview;
 
 fn err(error: impl std::fmt::Display) -> String {
     error.to_string()

@@ -119,6 +119,23 @@ async fn attachment_path(app: tauri::AppHandle, id: String) -> Result<String> {
 }
 
 #[tauri::command]
+async fn read_attachment_preview(
+    app: tauri::AppHandle,
+    id: String,
+) -> Result<tauri::ipc::Response> {
+    let preview = with_blocking_store(app, move |store| store.attachment_preview(&id))
+        .await
+        .map_err(|error| match error.as_str() {
+            "PREVIEW_UNSUPPORTED" | "PREVIEW_TOO_LARGE" | "PREVIEW_INVALID" => error,
+            _ => "PREVIEW_UNAVAILABLE".into(),
+        })?;
+    // Return binary IPC directly, avoiding a second base64/JSON copy of attachments.
+    tauri::async_runtime::spawn_blocking(move || preview.read().map(tauri::ipc::Response::new))
+        .await
+        .map_err(|_| "PREVIEW_UNAVAILABLE".to_owned())?
+}
+
+#[tauri::command]
 async fn reveal_attachment(app: tauri::AppHandle, id: String) -> Result<()> {
     let path = with_blocking_store(app, move |store| store.attachment_path(&id)).await?;
     // Shell COM work must run off the UI thread, with no vault lock held.
@@ -245,6 +262,7 @@ pub fn run() {
             remove_attachment,
             restore_attachment,
             attachment_path,
+            read_attachment_preview,
             reveal_attachment,
             open_attachment,
             open_data_dir,

@@ -16,6 +16,8 @@ import { useFileDrop } from './useFileDrop';
 import { version } from '../package.json';
 import { FieldEditor } from './FieldEditor';
 import { editableAttachmentName } from './attachmentName';
+import { AttachmentPreview } from './AttachmentPreview';
+import { previewKind } from './previewFormats';
 
 const categoryIcons: Record<Category, LucideIcon> = { identity: UserRound, education: GraduationCap, experience: BriefcaseBusiness, research: FlaskConical, awards: Award, skills: BadgeCheck, contacts: Users, documents: FileText, custom: SlidersHorizontal };
 const sortLabels: Record<RecordSortOrder, TranslationKey> = {
@@ -89,6 +91,7 @@ export default function App() {
   const [toast, setToast] = useState<Toast | null>(null);
   const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
   const [renameFile, setRenameFile] = useState<Attachment | null>(null);
+  const [preview, setPreview] = useState<{ files: Attachment[]; id: string } | null>(null);
   const [renameName, setRenameName] = useState('');
   const [pendingPaths, setPendingPaths] = useState<string[] | null>(null);
   const [importRecordId, setImportRecordId] = useState('__new__');
@@ -167,7 +170,7 @@ export default function App() {
   const closeRename = useCallback(() => { if (!busy) setRenameFile(null); }, [busy]);
   const closeImport = useCallback(() => { if (!busy) setPendingPaths(null); }, [busy]);
 
-  const modalOpen = templateOpen || settingsOpen || !!draft || !!confirm || !!renameFile || !!pendingPaths;
+  const modalOpen = templateOpen || settingsOpen || !!draft || !!confirm || !!renameFile || !!pendingPaths || !!preview;
   const dragging = useFileDrop(paths => {
     if (operationActive.current) { setToast({ text: t('dropBusy'), error: true }); return; }
     if (modalOpen) { setToast({ text: t('dropBlocked'), error: true }); return; }
@@ -234,6 +237,10 @@ export default function App() {
     await api.remove(file.id); await refresh(); setToast({ text: t('removed'), undo: async () => { await api.restoreAttachment(file.id); await refresh(); } });
   } });
   const addFiles = (record: ProfileRecord) => void perform(async () => { const files = await api.attach(record.id, locale); if (files.length) { await refresh(); setToast({ text: t('imported') }); } });
+  const openFile = (file: Attachment) => {
+    if (previewKind(file.fileName)) setPreview({ id: file.id, files: (view === 'files' ? fileResults : recordFiles).filter(item => previewKind(item.fileName)) });
+    else void perform(() => api.open(file.id));
+  };
   const fileActions = (file: Attachment) => <div className="file-actions">
     <IconButton label={t('copyPath')} disabled={busy} onClick={() => void perform(async () => { await copy(await api.path(file.id)); })}><Copy size={15}/></IconButton>
     <IconButton label={t('revealFolder')} disabled={busy} onClick={() => void perform(async () => { await api.reveal(file.id); })}><FolderOpen size={16}/></IconButton>
@@ -244,7 +251,7 @@ export default function App() {
   const newRecordButton = <button className="button primary compact-create" aria-label={t('newRecord')} title={t('newRecord')} onClick={() => setTemplateOpen(true)} disabled={loading || !!loadError || busy}><Plus size={16}/><span>{t('new')}</span></button>;
 
   return <div className="app-shell">
-    <aside className="sidebar">
+    <aside className="sidebar" inert={!!preview}>
       <div className="brand"><div className="brand-mark"><BookOpen size={21} strokeWidth={1.8}/></div><span>folio<span className="brand-dot">.</span></span></div>
       <nav aria-label={t('library')}>
         <button className={`nav-item ${view === 'all' ? 'selected' : ''}`} aria-current={view === 'all' ? 'page' : undefined} onClick={() => navigate('all')}><LayoutGrid size={17}/><span>{t('all')}</span><small>{snapshot.records.length}</small></button>
@@ -256,13 +263,13 @@ export default function App() {
       <div className="sidebar-bottom"><button className="nav-item" onClick={() => setSettingsOpen(true)}><Settings size={17}/><span>{t('settings')}</span></button></div>
     </aside>
 
-    <main className="main">
+    <main className="main" inert={!!preview}>
       <header className="topbar"><div className="search-box"><Search size={17}/><input ref={searchRef} value={query} onChange={e => setQuery(e.target.value)} placeholder={t('search')} aria-label={t('search')}/>{query ? <IconButton label={t('clearSearch')} onClick={() => setQuery('')}><X size={14}/></IconButton> : <kbd>Ctrl K</kbd>}</div><div className="topbar-actions"><IconButton label={appearance.theme === 'light' ? t('switchToDark') : t('switchToLight')} onClick={() => setAppearance(current => ({ ...current, theme: current.theme === 'light' ? 'dark' : 'light' }))}>{appearance.theme === 'light' ? <Moon size={17}/> : <Sun size={17}/>}</IconButton><button className="locale-toggle" onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')} title={t('language')} aria-label={t('language')}><Languages size={16}/><span>{locale === 'en' ? '中文' : 'EN'}</span></button></div></header>
       {!desktop && <div className="preview-banner">{t('preview')}</div>}
 
       {loading ? <div className="center-state"><div className="spinner"/><p>{t('loading')}</p></div> : loadError ? <div className="center-state"><Database size={32}/><h2>{t('error')}</h2><p className="error-message">{loadError}</p><button className="button" onClick={() => void load()}>{t('retry')}</button></div> : view === 'files' ? <section className="file-library" aria-label={title}>
         <div className="section-toolbar"><span>{fileResults.length} {t(fileResults.length === 1 ? 'fileSingular' : 'fileCount')}</span>{newRecordButton}</div>
-        {fileResults.length ? <div className="file-table"><div className="file-table-head"><span>{t('name')}</span><span>{t('record')}</span><span>{t('size')}</span><span>{t('actions')}</span></div>{fileResults.map(file => <div className="file-table-row" key={file.id}><div className="file-name"><div className="file-icon"><FileText size={20}/></div><div><button className="file-open" title={file.fileName} aria-label={`${t('openFile')}: ${file.fileName}`} disabled={busy} onClick={() => void perform(async () => { await api.open(file.id); })}><strong title={file.fileName}>{file.fileName}</strong></button><span title={file.originalName}>{file.originalName}</span></div></div><button className="text-button file-parent" onClick={() => { setView('all'); setQuery(''); setSelectedId(file.recordId); }}>{snapshot.records.find(r => r.id === file.recordId)?.title}</button><span className="mono muted">{formatBytes(file.size)}</span>{fileActions(file)}</div>)}</div> : <div className="center-state"><FolderOpen size={35}/><h2>{query ? t('noMatchingFiles') : t('noFiles')}</h2>{query ? <button className="text-button" onClick={() => setQuery('')}>{t('clearSearch')}</button> : <p>{t('noFilesHint')}</p>}</div>}
+        {fileResults.length ? <div className="file-table"><div className="file-table-head"><span>{t('name')}</span><span>{t('record')}</span><span>{t('size')}</span><span>{t('actions')}</span></div>{fileResults.map(file => <div className="file-table-row" key={file.id}><div className="file-name"><div className="file-icon"><FileText size={20}/></div><div><button className="file-open" title={file.fileName} aria-label={`${t('openFile')}: ${file.fileName}`} disabled={busy} onClick={() => openFile(file)}><strong title={file.fileName}>{file.fileName}</strong></button><span title={file.originalName}>{file.originalName}</span></div></div><button className="text-button file-parent" onClick={() => { setView('all'); setQuery(''); setSelectedId(file.recordId); }}>{snapshot.records.find(r => r.id === file.recordId)?.title}</button><span className="mono muted">{formatBytes(file.size)}</span>{fileActions(file)}</div>)}</div> : <div className="center-state"><FolderOpen size={35}/><h2>{query ? t('noMatchingFiles') : t('noFiles')}</h2>{query ? <button className="text-button" onClick={() => setQuery('')}>{t('clearSearch')}</button> : <p>{t('noFilesHint')}</p>}</div>}
       </section> : <section className="library-layout" aria-label={title}>
         <div className="record-pane">
           <div className="list-toolbar">
@@ -293,12 +300,14 @@ export default function App() {
           <div className="detail-header"><div className="detail-category"><span className={`category-dot category-${selected.category}`}/>{categoryLabels[selected.category][locale]}</div><div className="detail-tools"><IconButton label={selected.favorite ? t('unfavorite') : t('favorite')} active={selected.favorite} disabled={busy} onClick={() => toggleFavorite(selected)}><Star size={17} className={selected.favorite ? 'star-fill' : ''}/></IconButton><IconButton label={t('delete')} disabled={busy} onClick={() => deleteRecord(selected)}><Trash2 size={17}/></IconButton><span className="tool-divider"/><button className="button small" onClick={() => beginEdit(selected)} disabled={busy}><Pencil size={14}/>{t('edit')}</button></div></div>
           <div className="detail-title"><h2>{selected.title}</h2>{selected.subtitle && <p>{selected.subtitle}</p>}{selected.tags.length > 0 && <div className="tags">{selected.tags.map((tag, index) => <span key={`${tag}-${index}`}>{tag}</span>)}</div>}</div>
           <section className="detail-section"><div className="section-heading"><h3>{t('details')}<small>{selected.fields.length}</small></h3><button className="text-button" title={t('copyNotice')} onClick={() => void copy(formatRecord(selected, locale))}><Copy size={14}/>{t('copyRecord')}</button></div>{selected.fields.length ? <div className="fields-list">{selected.fields.map(field => <div className={`field-row ${matchedFieldIds.has(field.id) || focusedFieldId === field.id ? 'field-found' : ''}`} key={field.id} data-field-id={field.id} ref={node => { if (node) fieldNodes.current.set(field.id, node); else fieldNodes.current.delete(field.id); }}><div className="field-label">{fieldLabel(field, locale)}{field.sensitive && <LockKeyhole size={11}/>}</div><div className={`field-value ${!field.value ? 'muted' : ''} ${field.sensitive && !visibleFields.has(field.id) ? 'masked' : ''}`}>{field.value ? field.sensitive && !visibleFields.has(field.id) ? '••••••••••••' : field.value : t('noValue')}</div><div className="field-actions">{field.sensitive && field.value && <IconButton label={visibleFields.has(field.id) ? t('hide') : t('reveal')} onClick={() => setVisibleFields(prev => { const next = new Set(prev); if (next.has(field.id)) next.delete(field.id); else next.add(field.id); return next; })}>{visibleFields.has(field.id) ? <EyeOff size={15}/> : <Eye size={15}/>}</IconButton>}<IconButton label={`${t('copy')} ${fieldLabel(field, locale)}`} disabled={!field.value} onClick={() => void copy(field.value)}><Copy size={15}/></IconButton></div></div>)}</div> : <div className="inline-empty">{t('noFieldsHint')}</div>}</section>
-          <section className="detail-section"><div className="section-heading"><h3>{t('files')}<small>{recordFiles.length}</small></h3><button className="text-button" disabled={busy} onClick={() => addFiles(selected)}><Plus size={15}/>{t('attach')}</button></div>{recordFiles.length ? <div className="attachment-list">{recordFiles.map(file => <div className="attachment-row" key={file.id}><div className="file-icon"><FileText size={21}/></div><div className="attachment-name"><button className="file-open" title={file.fileName} aria-label={`${t('openFile')}: ${file.fileName}`} disabled={busy} onClick={() => void perform(async () => { await api.open(file.id); })}><strong title={file.fileName}>{file.fileName}</strong></button><span title={file.originalName}>{formatBytes(file.size)}<span className="meta-separator">·</span>{file.originalName}</span></div>{fileActions(file)}</div>)}</div> : <button className="attach-empty" disabled={busy} onClick={() => addFiles(selected)}><div><Paperclip size={20}/></div><span><strong>{t('noFiles')}</strong><small>{t('dropHint')}</small></span><Plus size={18}/></button>}</section>
+          <section className="detail-section"><div className="section-heading"><h3>{t('files')}<small>{recordFiles.length}</small></h3><button className="text-button" disabled={busy} onClick={() => addFiles(selected)}><Plus size={15}/>{t('attach')}</button></div>{recordFiles.length ? <div className="attachment-list">{recordFiles.map(file => <div className="attachment-row" key={file.id}><div className="file-icon"><FileText size={21}/></div><div className="attachment-name"><button className="file-open" title={file.fileName} aria-label={`${t('openFile')}: ${file.fileName}`} disabled={busy} onClick={() => openFile(file)}><strong title={file.fileName}>{file.fileName}</strong></button><span title={file.originalName}>{formatBytes(file.size)}<span className="meta-separator">·</span>{file.originalName}</span></div>{fileActions(file)}</div>)}</div> : <button className="attach-empty" disabled={busy} onClick={() => addFiles(selected)}><div><Paperclip size={20}/></div><span><strong>{t('noFiles')}</strong><small>{t('dropHint')}</small></span><Plus size={18}/></button>}</section>
           {selected.notes && <section className="detail-section"><div className="section-heading"><h3>{t('notes')}</h3><IconButton label={`${t('copy')} ${t('notes')}`} onClick={() => void copy(selected.notes)}><Copy size={14}/></IconButton></div><div className="notes-content">{selected.notes}</div></section>}
           <footer className="detail-footer"><span>{t('updated')} {shortDate(selected.updatedAt)}</span></footer>
         </article> : snapshot.records.length === 0 ? <div className="welcome"><div className="welcome-icon"><BookOpen size={36} strokeWidth={1.4}/></div><h2>{t('emptyTitle')}</h2><p>{t('emptyHint')}</p><div className="starter-templates">{templates.filter(x => ['identity', 'education', 'document'].includes(x.id)).map(template => <button key={template.id} onClick={() => beginEdit(createRecord(template.id, locale))}>{template.name[locale]}<ChevronRight size={14}/></button>)}</div></div> : <div className="center-state"><BookOpen size={32}/><h2>{t('selectRecord')}</h2></div>}
       </section>}
     </main>
+
+    {preview && <AttachmentPreview files={preview.files} initialId={preview.id} locale={locale} busy={busy} onClose={() => setPreview(null)} onOpen={file => void perform(() => api.open(file.id))} onCopyPath={file => void perform(async () => { await copy(await api.path(file.id)); })} onReveal={file => void perform(() => api.reveal(file.id))}/>}
 
     {templateOpen && <Modal title={t('chooseTemplate')} close={closeTemplates} closeLabel={t('close')} wide><p className="modal-description">{t('templateHint')}</p><div className="template-grid">{templates.map(template => { const Icon = categoryIcons[template.category]; return <button key={template.id} className="template-card" onClick={() => { setTemplateOpen(false); beginEdit(createRecord(template.id, locale)); }}><div className={`record-icon category-${template.category}`}><Icon size={20}/></div><strong>{template.name[locale]}</strong><span>{template.description[locale]}</span><ChevronRight size={15}/></button>; })}</div></Modal>}
 

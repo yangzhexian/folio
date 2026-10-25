@@ -1,7 +1,7 @@
 {
   "name": "folio-desktop",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 1420 --strictPort",
@@ -21,6 +21,7 @@
     "@tauri-apps/api": "^2.10.0",
     "@tauri-apps/plugin-clipboard-manager": "^2.3.2",
     "lucide-react": "^0.468.0",
+    "pdfjs-dist": "6.4.299",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

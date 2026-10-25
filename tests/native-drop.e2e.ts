@@ -18,8 +18,9 @@ const initialSnapshot = {
 
 // Exercise the real frontend and Tauri event adapters with the package's public
 // IPC mocks. Files and backend persistence remain covered by Rust tests.
-async function openMockDesktop(page: Page, empty = false) {
-  const snapshot = empty ? { ...initialSnapshot, records: [], attachments: [] } : initialSnapshot;
+async function openMockDesktop(page: Page, empty = false, externalOnly = false) {
+  const snapshot = empty ? { ...initialSnapshot, records: [], attachments: [] } : structuredClone(initialSnapshot);
+  if (externalOnly) snapshot.attachments = snapshot.attachments.map(file => ({ ...file, fileName: file.fileName.replace(/\.pdf$/, '.txt') }));
   await page.route('http://127.0.0.1:1420/', async route => {
     const response = await route.fetch();
     const html = await response.text();
@@ -212,15 +213,15 @@ test('filters individual file names, exposes full names, and distinguishes empty
   await expect(page.locator('.file-table-row')).toHaveCount(3);
 });
 
-test('opens attachments from both views through the native managed-file command', async ({ page }) => {
-  await openMockDesktop(page);
-  await page.getByRole('button', { name: 'Open file: identity__passport__123456789abc.pdf', exact: true }).click();
+test('opens unsupported attachments from both views through the native managed-file command', async ({ page }) => {
+  await openMockDesktop(page, false, true);
+  await page.getByRole('button', { name: 'Open file: identity__passport__123456789abc.txt', exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as any).__folioTest.calls.filter((call: any) => call.command === 'open_attachment'))).toEqual([{ command: 'open_attachment', args: { id: 'passport' } }]);
   await page.getByRole('button', { name: /^Files\s*3$/ }).click();
-  await page.getByRole('button', { name: 'Open file: identity_456789abcdef.pdf', exact: true }).click();
+  await page.getByRole('button', { name: 'Open file: identity_456789abcdef.txt', exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as any).__folioTest.calls.filter((call: any) => call.command === 'open_attachment').map((call: any) => call.args.id))).toEqual(['passport', 'resume']);
   await page.getByRole('button', { name: 'Language', exact: true }).click();
-  await expect(page.getByRole('button', { name: '打开文件: research_789abcdef123.pdf', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '打开文件: research_789abcdef123.txt', exact: true })).toBeVisible();
 });
 
 test('edits the generated suffix and converts legacy names on explicit rename', async ({ page }) => {
