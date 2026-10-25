@@ -16,4 +16,6 @@ playwright-report/
 local-data/
 data/
 artifacts/
+video/.bundle/
+video/public/audio/
 .DS_Store

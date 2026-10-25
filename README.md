@@ -2,6 +2,10 @@
 
 A small desktop library for personal details, education, experience, research, contacts, and supporting documents. Folio uses Tauri 2, React, TypeScript, and SQLite to keep records and managed files on your computer. Its interface supports English and Simplified Chinese.
 
+[![Folio introduction: organize personal details, find and copy fields, manage files, and choose your appearance](docs/media/folio-preview.gif)](docs/media/folio-intro.mp4)
+
+**[Watch or download the full introduction](docs/media/folio-intro.mp4)** · 42 seconds · 1080p · English titles with Chinese captions and original instrumental music. The embedded preview is a short, silent loop; a [static poster](docs/media/folio-poster.png) is also available. All records shown are fictional demonstration data captured from the current interface. Built with [Remotion](https://github.com/remotion-dev/remotion); [source and reproduction instructions](video/README.md).
+
 ## Features
 
 - Create records from bilingual templates or start with custom fields.
@@ -93,6 +97,32 @@ The current backup format is version 1. Limits are 2 GiB per attachment, 10 GiB 
 | `src-tauri/src/` | SQLite persistence, native dialogs, attachment operations, and backup handling |
 | `src-tauri/capabilities/` | Native capabilities exposed to the application window |
 | `tests/*.e2e.ts` | Browser interface regression tests with synthetic records |
+| `video/` | Separate Remotion project, synthetic UI captures, and original soundtrack generation |
+
+## Roadmap
+
+The next priorities are below. These are proposed improvements, not features in the current release; see the [detailed roadmap and acceptance checks](docs/roadmap.md).
+
+| Order | Focus | Planned outcome |
+| --- | --- | --- |
+| 1 | Built-in attachment preview | Preview PNG/JPG images and then PDFs inside Folio, with zoom, navigation, and an explicit option to open externally. |
+| 2 | Everyday experience | Recover unsaved drafts, improve keyboard access and import feedback, remember workspace layout, and support reusable personal templates. |
+| 3 | Recovery and maintenance | Restore deleted items from a persistent Trash view, improve backup visibility and verification, and report missing or changed attachments. |
+| 4 | Larger libraries | Measure performance, add targeted search and list improvements, and consider mapped CSV/JSON imports, batch actions, and optional offline OCR. |
+| 5 | Optional protection | Evaluate encryption for the complete vault, including attachments, indexes, drafts, previews, and backups. |
+
+All planned storage and processing remain local. Image preview is the first proposed milestone, followed by a locally bundled PDF viewer.
+
+## Rebuilding the introduction
+
+The video has its own dependency lockfile and is not included in the desktop application bundle. From the repository root:
+
+```powershell
+npm ci --prefix video
+npm run video:render
+```
+
+This generates the full MP4, README GIF preview, and poster in `docs/media/` from the checked-in synthetic captures. Use `npm run video:capture` after interface changes and `npm run video:studio` to edit the animation interactively. See [video/README.md](video/README.md) for browser prerequisites, checks, and the scene timeline.
 
 ## Checks
 

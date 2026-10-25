@@ -11,7 +11,11 @@
     "test:e2e": "playwright test",
     "tauri": "tauri",
     "desktop": "tauri dev",
-    "desktop:build": "tauri build"
+    "desktop:build": "tauri build",
+    "video:capture": "npm run capture --prefix video",
+    "video:render": "npm run render --prefix video",
+    "video:studio": "npm run audio --prefix video && npm run studio --prefix video",
+    "video:check": "npm run typecheck --prefix video"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.10.0",

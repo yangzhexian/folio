@@ -1,0 +1,15 @@
+{
+  "remotion": "4.0.538",
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "durationInSeconds": 42.005,
+  "codec": "h264",
+  "canPlayInVideoTag": true,
+  "supportsSeeking": true,
+  "colorSpace": "bt470bg",
+  "audioCodec": "aac",
+  "audioFileExtension": "aac",
+  "pixelFormat": "yuvj420p",
+  "hasAudio": true
+}
