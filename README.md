@@ -4,7 +4,9 @@ A small desktop library for personal details, education, experience, research, c
 
 [![Folio introduction: organize personal details, find and copy fields, manage files, and choose your appearance](docs/media/folio-preview.gif)](docs/media/folio-intro.mp4)
 
-**[Watch or download the full introduction](docs/media/folio-intro.mp4)** · 42 seconds · 1080p · English titles with Chinese captions and original instrumental music. The embedded preview is a short, silent loop; a [static poster](docs/media/folio-poster.png) is also available. All records shown are fictional demonstration data captured from the current interface. Built with [Remotion](https://github.com/remotion-dev/remotion); [source and reproduction instructions](video/README.md).
+**[Watch or download the full introduction](docs/media/folio-intro.mp4)**: 60.6 seconds, 2K (2560 × 1440), English titles with Chinese captions and original instrumental music. The right-hand window follows one uninterrupted operation from search and editing through image/PDF preview, file management, and appearance changes. The embedded preview is a consecutive, silent 1080p excerpt (1920 × 1080); a [static poster](docs/media/folio-poster.png) is also available. All records shown are fictional demonstration data captured from the current interface. Built with [Remotion](https://github.com/remotion-dev/remotion); [storyboard](video/storyboard.md) and [source and reproduction instructions](video/README.md).
+
+Download the Windows installer from [Folio v0.4.1](https://github.com/yangzhexian/folio/releases/tag/v0.4.1). The release also includes a portable desktop/CLI package, the agent skill, and file checksums.
 
 ## Features
 
@@ -19,6 +21,7 @@ A small desktop library for personal details, education, experience, research, c
 - Drop files onto a record, or choose a destination after dropping into the file library.
 - Use light or dark appearance with five accent colors; the default remains light sage.
 - Export a local backup and restore an existing library from it.
+- Let agents enter data through a local CLI and reusable skill, with validated JSON, revision-checked updates, and managed attachment imports.
 
 ## Development
 
@@ -35,7 +38,7 @@ The first desktop build downloads Rust dependencies and can take several minutes
 npm run desktop:build
 ```
 
-The build places the application executable and Windows installer under `src-tauri/target/release/`. Generated bundles are under `src-tauri/target/release/bundle/nsis/`.
+The build first compiles `folio-cli.exe`, then bundles it and the data-entry skill with the desktop application. The executables are under `src-tauri/target/release/`; Windows installers are under `src-tauri/target/release/bundle/nsis/`. `src-tauri/tauri.release.conf.json` maps the CLI, skill, and license into the installation directory without making development builds depend on previously built release files. The build wrapper remaps Rust source paths to portable prefixes, keeping machine-specific home and checkout paths out of release binaries.
 
 To inspect just the interface, run `npm run dev` and open `http://127.0.0.1:1420`. Browser preview uses synthetic example records held in memory. Changes reset on reload, and native file and backup operations require the desktop application. The browser preview never loads your desktop database.
 
@@ -62,6 +65,23 @@ Drag one or more files from Windows Explorer onto Folio to import them. When a r
 Open **Settings → Appearance** to choose **Light** or **Dark** and one of **Sage**, **Blue**, **Violet**, **Rose**, or **Amber**. The sun/moon button in the top bar switches appearance quickly. **Reset appearance** restores the original light sage theme. Theme and color preferences persist across restarts, and the desktop title bar follows the selected light/dark mode.
 
 New managed files follow `collection_12-character-id.extension`, for example `identity_9cedf69724b8.pdf`. **Rename** edits that generated suffix, so entering `passport` produces `identity_passport.pdf`; the collection prefix and safe extension are retained automatically. Spaces become hyphens, unsafe filename characters are sanitized, and Unicode names are retained. Files are stored in separate record folders, and conflicting names within a record are rejected without overwriting either file. Existing filenames remain usable and only change when explicitly renamed. A single import accepts up to 100 regular files, with a maximum of 2 GiB per file.
+
+## Agent data entry
+
+Version 0.4.1 adds [the Folio Data Entry skill](skills/folio-data-entry/SKILL.md) and `folio-cli.exe`. Other agents can create or update structured records and import attachments through the same local Rust backend used by the desktop app. The installer places the CLI beside `Folio.exe` and the skill in `skills/folio-data-entry`. To build only the CLI from source, run `npm run backend:build`.
+
+Install the complete `folio-data-entry` directory in your agent's skill directory, or ask an agent to read its `SKILL.md` directly. For Codex, the usual location is `~/.codex/skills/folio-data-entry`. A request can be as simple as: "Use $folio-data-entry to add the supplied contact and documents to my Folio library." Give the actual data path when the intended library is not already clear.
+
+```powershell
+& 'D:\Apps\Folio\folio-cli.exe' --data-dir 'D:\Apps\Folio\data' info
+& 'D:\Apps\Folio\folio-cli.exe' schema
+& 'D:\Apps\Folio\folio-cli.exe' --data-dir 'D:\Apps\Folio\data' validate --input 'D:\PrivateWork\record.json'
+& 'D:\Apps\Folio\folio-cli.exe' --data-dir 'D:\Apps\Folio\data' create --input 'D:\PrivateWork\record.json'
+```
+
+These paths are examples. Read [the CLI reference](skills/folio-data-entry/references/cli.md) for the JSON schema, commands, revision checks, exit codes, and safe retry behavior. Agents should inspect `info` before writing, keep sensitive values in UTF-8 input files or stdin, and verify mutations with `get`. Updates replace the complete record and require its exact previous `updatedAt`; they preserve unrelated fields by reading the latest record first. Importing attachments copies originals into the managed library. Record creation and attachment import are separate operations, and repeating an attachment import can create another copy.
+
+Folio can stay open during agent entry. Backend operations share a short-lived local lock, including backup restoration. When Folio regains focus it reloads external changes at a safe boundary, preserving open editors and ongoing operations. If a saved record changed while an editor was open, saving reports a translated conflict and keeps the draft for reconciliation. This workflow starts no network listener and never requires agents to edit SQLite or the managed attachment directory directly.
 
 ## Privacy and storage
 
@@ -98,9 +118,12 @@ The current backup format is version 1. Limits are 2 GiB per attachment, 10 GiB 
 | `src/sorting.ts` | Chronological and localized title ordering, stable ties, and saved preference validation |
 | `src/theme.ts` | Appearance preferences and theme application |
 | `src/useFileDrop.ts` | Native drop-event lifecycle and browser navigation protection |
+| `src/useExternalChanges.ts` | Deferred focus refresh and stale-snapshot rejection during external editing |
 | `src/api.ts` | Tauri command bridge and isolated in-memory browser preview |
 | `src/AttachmentPreview.tsx` / `src/PdfPreview.tsx` | Bilingual attachment viewer, bounded image/PDF rendering, navigation, and resource cleanup |
 | `src-tauri/src/storage/preview.rs` | Active-file authorization, bounded binary reads, and format/dimension validation |
+| `src-tauri/src/cli.rs` / `src-tauri/src/storage/agent.rs` | Structured local CLI, non-overwriting creation, and revision-checked updates |
+| `skills/folio-data-entry/` | Agent workflow, input contract, and verification/retry guidance |
 | `src-tauri/src/` | SQLite persistence, native dialogs, attachment operations, and backup handling |
 | `src-tauri/capabilities/` | Native capabilities exposed to the application window |
 | `tests/*.e2e.ts` | Browser interface regression tests with synthetic records |

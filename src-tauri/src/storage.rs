@@ -13,8 +13,36 @@ const MAX_BACKUP_SIZE: u64 = 10 * 1024 * 1024 * 1024;
 const MAX_MANIFEST_SIZE: u64 = 32 * 1024 * 1024;
 const MAX_BACKUP_ENTRIES: usize = 100_001;
 
+mod agent;
 mod migration;
 mod preview;
+use agent::next_revision;
+
+/// Coordinate complete application/CLI operations, including vault replacement.
+/// The guard lives outside `vault`, so restore cannot move it out of the lock scope.
+pub fn operation_lock(root: &Path, create_root: bool) -> Result<File> {
+    if create_root {
+        fs::create_dir_all(root).map_err(err)?;
+    }
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(root.join(".folio-operation.lock"))
+        .map_err(err)?;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        match file.try_lock() {
+            Ok(()) => return Ok(file),
+            Err(std::fs::TryLockError::WouldBlock) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            Err(std::fs::TryLockError::WouldBlock) => return Err("LIBRARY_BUSY".into()),
+            Err(error) => return Err(error.to_string()),
+        }
+    }
+}
 
 fn err(error: impl std::fmt::Display) -> String {
     error.to_string()
@@ -89,20 +117,28 @@ impl Store {
     pub fn save_record(&self, mut record: ProfileRecord) -> Result<ProfileRecord> {
         validate_record(&record)?;
         let mut db = self.connection()?;
-        let tx = db.transaction().map_err(err)?;
-        let previous: Option<String> = tx
-            .query_row("SELECT body FROM records WHERE id=?1", [&record.id], |r| {
-                r.get(0)
-            })
+        let tx = db
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .map_err(err)?;
+        let previous: Option<(String, i64)> = tx
+            .query_row(
+                "SELECT body, deleted FROM records WHERE id=?1",
+                [&record.id],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
             .optional()
             .map_err(err)?;
-        if let Some(body) = previous {
-            record.created_at = serde_json::from_str::<ProfileRecord>(&body)
-                .map_err(err)?
-                .created_at;
+        if let Some((body, deleted)) = previous {
+            let previous = serde_json::from_str::<ProfileRecord>(&body).map_err(err)?;
+            if deleted == 0 && record.updated_at != previous.updated_at {
+                return Err("RECORD_CONFLICT".into());
+            }
+            record.created_at = previous.created_at;
+            record.updated_at = next_revision(&previous.updated_at)?;
+        } else {
+            record.updated_at = now();
         }
         record.title = record.title.trim().to_owned();
-        record.updated_at = now();
         tx.execute("INSERT INTO records(id, body, deleted) VALUES(?1, ?2, 0) ON CONFLICT(id) DO UPDATE SET body=excluded.body, deleted=0", params![record.id, serde_json::to_string(&record).map_err(err)?]).map_err(err)?;
         tx.execute(
             "UPDATE attachments SET deleted=0 WHERE record_id=?1 AND deleted=2",
@@ -778,7 +814,7 @@ pub fn display_path(path: &Path) -> String {
     }
 }
 
-fn validate_local_drop_path(path: &Path) -> Result<()> {
+pub(crate) fn validate_local_drop_path(path: &Path) -> Result<()> {
     if !path.is_absolute() {
         return Err("Drop files using absolute local paths.".into());
     }

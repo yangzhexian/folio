@@ -35,7 +35,7 @@ test('keeps creation and sorting in the list toolbar without repeated library la
 test('sorts by modification date, creation date, and title in both directions', async ({ page }) => {
   const sort = page.getByRole('combobox', { name: 'Sort records', exact: true });
   const titles = page.locator('.record-card .record-title strong');
-  const identity = 'Personal details', education = 'MSc · Computer Science', research = 'Research portfolio';
+  const identity = 'Personal details', education = 'MSc: Computer Science', research = 'Research portfolio';
   const cases: [string, string[]][] = [
     ['updated-desc', [identity, education, research]],
     ['updated-asc', [research, education, identity]],
@@ -68,7 +68,7 @@ test('retains the sort preference across search, collections, language changes, 
   await sort.selectOption('created-asc');
   await page.getByRole('button', { name: /^Favorites/ }).click();
   await expect(sort).toHaveValue('created-asc');
-  await expect(page.locator('.record-card .record-title strong')).toHaveText(['Personal details', 'MSc · Computer Science']);
+  await expect(page.locator('.record-card .record-title strong')).toHaveText(['Personal details', 'MSc: Computer Science']);
   const search = page.getByRole('textbox', { name: 'Search records, fields, files…' });
   await search.fill('学校 example');
   await expect(page.locator('.record-card')).toHaveCount(1);
@@ -80,11 +80,11 @@ test('retains the sort preference across search, collections, language changes, 
   await expect(page.getByRole('combobox', { name: '条目排序', exact: true })).toHaveValue('created-asc');
   await page.reload();
   await expect(page.getByRole('combobox', { name: '条目排序', exact: true })).toHaveValue('created-asc');
-  await expect(page.locator('.record-card .record-title strong')).toHaveText(['Personal details', 'Research portfolio', 'MSc · Computer Science']);
+  await expect(page.locator('.record-card .record-title strong')).toHaveText(['Personal details', 'Research portfolio', 'MSc: Computer Science']);
   await page.getByRole('combobox', { name: '条目排序', exact: true }).selectOption('updated-asc');
   await page.reload();
   await expect(page.getByRole('combobox', { name: '条目排序', exact: true })).toHaveValue('updated-asc');
-  await expect(page.locator('.record-card .record-title strong')).toHaveText(['Research portfolio', 'MSc · Computer Science', 'Personal details']);
+  await expect(page.locator('.record-card .record-title strong')).toHaveText(['Research portfolio', 'MSc: Computer Science', 'Personal details']);
   await expect(page.getByRole('heading', { name: 'Research portfolio', exact: true })).toBeVisible();
 });
 
@@ -92,9 +92,9 @@ test('keeps the automatically selected record open when favoriting changes its s
   await page.getByRole('combobox', { name: 'Sort records', exact: true }).selectOption('updated-asc');
   await page.getByRole('button', { name: /^All records/ }).click();
   await expect(page.getByRole('heading', { name: 'Research portfolio', exact: true })).toBeVisible();
-  await expect(page.locator('.record-card .record-title strong')).toHaveText(['Research portfolio', 'MSc · Computer Science', 'Personal details']);
+  await expect(page.locator('.record-card .record-title strong')).toHaveText(['Research portfolio', 'MSc: Computer Science', 'Personal details']);
   await page.getByRole('button', { name: 'Add to favorites', exact: true }).click();
-  await expect(page.locator('.record-card .record-title strong')).toHaveText(['MSc · Computer Science', 'Personal details', 'Research portfolio']);
+  await expect(page.locator('.record-card .record-title strong')).toHaveText(['MSc: Computer Science', 'Personal details', 'Research portfolio']);
   await expect(page.getByRole('heading', { name: 'Research portfolio', exact: true })).toBeVisible();
   await expect(page.locator('.record-card.selected .record-title strong')).toHaveText('Research portfolio');
   await expect(page.getByRole('button', { name: 'Remove from favorites', exact: true })).toBeVisible();
@@ -137,7 +137,7 @@ test('search matches bilingual fields and multiple words, and clearing recovers 
   const search = page.getByRole('textbox', { name: 'Search records, fields, files…' });
   await search.fill('学校 example');
   await expect(page.locator('.record-card')).toHaveCount(1);
-  await expect(page.getByRole('heading', { name: 'MSc · Computer Science', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'MSc: Computer Science', exact: true })).toBeVisible();
   await search.fill('a phrase that does not exist');
   await expect(page.getByText('No matching records', { exact: true })).toBeVisible();
   await expect(page.locator('.record-card')).toHaveCount(0);

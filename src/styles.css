@@ -184,7 +184,6 @@ h1, h2, h3, p { margin: 0; }
 .attachment-name { min-width: 0; flex: 1; }
 .attachment-name strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; }
 .attachment-name > span { display: block; font-size: 11px; color: var(--muted); margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.meta-separator { margin: 0 7px; }
 .file-actions { display: flex; }
 .notes-content { padding: 16px 0; font-size: 14px; line-height: 1.8; color: var(--value-text); white-space: pre-wrap; overflow-wrap: anywhere; }
 .detail-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11px; color: var(--muted); margin-top: 35px; padding: 20px 0 25px; border-top: 1px solid var(--line); }

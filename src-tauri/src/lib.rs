@@ -1,3 +1,4 @@
+pub mod cli;
 mod model;
 mod storage;
 
@@ -18,7 +19,9 @@ fn with_store<T>(
         .0
         .lock()
         .map_err(|_| "The local vault is busy. Restart Folio to continue.".to_owned())?;
-    action(store.as_ref().map_err(Clone::clone)?)
+    let store = store.as_ref().map_err(Clone::clone)?;
+    let _guard = storage::operation_lock(store.root(), false)?;
+    action(store)
 }
 
 async fn with_blocking_store<T: Send + 'static>(
@@ -245,7 +248,9 @@ pub fn run() {
                     .path()
                     .app_local_data_dir()
                     .map_err(|error| error.to_string())?;
-                Store::open_installed(directory.join("data"), &legacy)
+                let root = directory.join("data");
+                let _guard = storage::operation_lock(&root, true)?;
+                Store::open_installed(root, &legacy)
             })();
             // Surface initialization errors in the existing load-error UI instead of silently
             // choosing another data folder or exiting before the user can read the error.

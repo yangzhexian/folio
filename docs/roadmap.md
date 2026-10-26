@@ -1,10 +1,14 @@
 # Folio roadmap
 
-This roadmap tracks the delivered 0.4.0 preview foundation and proposed follow-up work. The remaining items are planned, not released, and their order reflects user value and implementation dependencies rather than promised dates. Folio should remain a small, bilingual desktop library whose records, attachments, indexes, and backups stay on the user's computer.
+This roadmap tracks the delivered 0.4.1 local agent-entry workflow, the 0.4.0 preview foundation, and proposed follow-up work. The remaining items are planned, not released, and their order reflects user value and implementation dependencies rather than promised dates. Folio should remain a small, bilingual desktop library whose records, attachments, indexes, and backups stay on the user's computer.
 
 ## Current foundation
 
 Folio supports structured records, bilingual field search, direct value copying, positional field insertion, pointer and keyboard field ordering, local attachment import, managed filenames, built-in PNG/JPG/JPEG and PDF preview, light and dark themes, and manual ZIP backup and restore. Data is stored beside the executable in `data`. Deleted items are retained on disk with a short Undo action, but there is no persistent trash interface. Records, attachments, and backups are not encrypted.
+
+## Delivered: local agent data entry
+
+The `folio-data-entry` skill and packaged `folio-cli.exe` let agents create and revise records and import attachments through the local Rust backend. JSON commands validate inputs, reject duplicate record IDs, and require the exact previous revision for updates. Desktop and CLI operations coordinate through a local lock, the desktop refreshes on focus, and stale editors retain their drafts while reporting a translated conflict. The skill describes verification, partial success, and duplicate-attachment avoidance. It does not start a server or bypass the managed storage layer. A future import workflow can build on these commands with mapping previews and per-file progress.
 
 ## Delivered: the attachment preview foundation
 
