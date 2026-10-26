@@ -1,9 +1,52 @@
 {
+  "source": {
+    "file": "video/public/session/continuous.mp4",
+    "durationSeconds": 53.6,
+    "viewport": {
+      "width": 1920,
+      "height": 1200
+    },
+    "continuous": true,
+    "cues": [
+      {
+        "id": "organize",
+        "time": 0.058
+      },
+      {
+        "id": "search",
+        "time": 2.009
+      },
+      {
+        "id": "edit",
+        "time": 8.312
+      },
+      {
+        "id": "image",
+        "time": 19.011
+      },
+      {
+        "id": "pdf",
+        "time": 25.503
+      },
+      {
+        "id": "files",
+        "time": 34.015
+      },
+      {
+        "id": "appearance",
+        "time": 43.002
+      },
+      {
+        "id": "language",
+        "time": 50.503
+      }
+    ]
+  },
   "remotion": "4.0.538",
   "fps": 30,
-  "width": 1920,
-  "height": 1080,
-  "durationInSeconds": 42.005,
+  "width": 2560,
+  "height": 1440,
+  "durationInSeconds": 60.608,
   "codec": "h264",
   "canPlayInVideoTag": true,
   "supportsSeeking": true,
@@ -11,5 +54,17 @@
   "audioCodec": "aac",
   "audioFileExtension": "aac",
   "pixelFormat": "yuvj420p",
-  "hasAudio": true
+  "hasAudio": true,
+  "preview": {
+    "file": "docs/media/folio-preview.gif",
+    "width": 1920,
+    "height": 1080,
+    "fps": 12,
+    "frames": 728,
+    "durationSeconds": 60.666666666666664,
+    "fullWorkflow": true,
+    "playbackRate": 1,
+    "dither": "none",
+    "frameDifferenceMode": "rectangle"
+  }
 }

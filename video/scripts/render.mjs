@@ -9,6 +9,7 @@ const repo = resolve(project, '..');
 const output = resolve(repo, 'docs/media');
 const stillsOnly = process.argv.includes('--stills');
 const previewOnly = process.argv.includes('--preview');
+const previewScale = .75;
 mkdirSync(output, { recursive: true });
 const checkDir = resolve(repo, 'artifacts/video-check');
 mkdirSync(checkDir, { recursive: true });
@@ -21,7 +22,28 @@ const common = { serveUrl, puppeteerInstance: browser, browserExecutable, logLev
 
 try {
   const composition = await selectComposition({ ...common, id: 'FolioIntro' });
-  const shots = [60, 210, 430, 615, 690, 840, 990, 1060, 1190];
+  const session = JSON.parse(readFileSync(resolve(project, 'public/session/manifest.json')));
+  const formatTime = seconds => {
+    const milliseconds = Math.round(seconds * 1000);
+    return `${String(Math.floor(milliseconds / 60000)).padStart(2, '0')}:${String(Math.floor(milliseconds / 1000) % 60).padStart(2, '0')}.${String(milliseconds % 1000).padStart(3, '0')}`;
+  };
+  const captions = {
+    organize: 'Keep identity, education, experience, and supporting files together.',
+    search: 'Search familiar words and synonyms. Copy the exact field value you need.',
+    edit: 'Drag a field into place. Edit its value, then save the same record.',
+    image: 'Open a PNG or JPG inside Folio. Zoom in, then fit the image to the view.',
+    pdf: 'Switch directly to the next PDF attachment. Turn a page and zoom in.',
+    files: 'Close the preview, rename the document, and copy its managed file path.',
+    appearance: 'Choose dark mode and a new accent color.',
+    language: 'Switch between English and Chinese while preserving your workspace.',
+  };
+  const captionCues = [{ time: 0, text: '[Soft instrumental music] Folio. Your details. Within reach.' }, ...session.cues.map(cue => ({ time: 3 + cue.time, text: captions[cue.id] })), { time: 3 + session.duration, text: 'Folio. Less searching. More ready. [Music fades]' }];
+  writeFileSync(resolve(output, 'folio-intro.en.vtt'), 'WEBVTT\n\n' + captionCues.map((cue, index) => `${formatTime(cue.time)} --> ${formatTime(captionCues[index + 1]?.time ?? composition.durationInFrames / composition.fps)}\n${cue.text}\n`).join('\n'));
+  const playerFile = resolve(output, 'index.html');
+  const seconds = (composition.durationInFrames / composition.fps).toFixed(1);
+  const player = readFileSync(playerFile, 'utf8').replace(/Folio product introduction, [\d.]+ seconds/g, `Folio product introduction, ${seconds} seconds`).replace(/<small>.*<\/small>/, `<small>${seconds} seconds, 2560 × 1440, 30 fps. One continuous application session, English titles and Chinese captions, original instrumental soundtrack. All records and attachments shown are fictional.</small>`);
+  writeFileSync(playerFile, player);
+  const shots = [...new Set([60, ...session.cues.map(cue => Math.round((3 + cue.time + 1.7) * 30)), 450, 558, 990, 1200, 1500, composition.durationInFrames - 60])].sort((a, b) => a - b);
   for (const frame of shots) {
     await renderStill({ ...common, composition, frame, imageFormat: 'png', output: resolve(checkDir, `frame-${String(frame).padStart(4, '0')}.png`) });
   }
@@ -41,11 +63,15 @@ try {
     }
     const metadata = await getVideoMetadata(resolve(output, 'folio-intro.mp4'));
     const hasAudio = metadata.audioCodec === 'aac';
-    if (metadata.width !== 1920 || metadata.height !== 1080 || metadata.fps !== 30 || Math.abs(metadata.durationInSeconds - 42) > .1 || !hasAudio) throw new Error(`Unexpected rendered video metadata: ${JSON.stringify(metadata)}`);
-    writeFileSync(resolve(output, 'render-metadata.json'), JSON.stringify({ remotion: JSON.parse(readFileSync(resolve(project, 'node_modules/remotion/package.json'))).version, ...metadata, hasAudio }, null, 2) + '\n');
+    if (metadata.width !== 2560 || metadata.height !== 1440 || metadata.fps !== 30 || Math.abs(metadata.durationInSeconds - composition.durationInFrames / composition.fps) > .1 || !hasAudio) throw new Error(`Unexpected rendered video metadata: ${JSON.stringify(metadata)}`);
+    const renderMetadata = { source: { file: 'video/public/session/continuous.mp4', durationSeconds: session.duration, viewport: session.viewport, continuous: true, cues: session.cues }, remotion: JSON.parse(readFileSync(resolve(project, 'node_modules/remotion/package.json'))).version, ...metadata, hasAudio };
     console.log(`Verified MP4: ${metadata.width}×${metadata.height}, ${metadata.durationInSeconds}s, audio ${metadata.audioCodec}.`);
     const preview = await selectComposition({ ...common, id: 'FolioPreview' });
-    await renderMedia({ ...common, composition: preview, codec: 'gif', scale: .5, concurrency: 4, outputLocation: resolve(output, 'folio-preview.gif'), onProgress: report('GIF') });
+    // A global palette without error-diffusion noise preserves crisp interface
+    // text and lets unchanged rectangles compress efficiently in the long GIF.
+    const gifFilter = 'split[v],palettegen,[v]paletteuse=dither=0:diff_mode=rectangle';
+    await renderMedia({ ...common, composition: preview, codec: 'gif', scale: previewScale, concurrency: 4, outputLocation: resolve(output, 'folio-preview.gif'), onProgress: report('GIF'), ffmpegOverride: ({ args }) => args.map(argument => argument === 'split[v],palettegen,[v]paletteuse' ? gifFilter : argument) });
+    writeFileSync(resolve(output, 'render-metadata.json'), JSON.stringify({ ...renderMetadata, preview: { file: 'docs/media/folio-preview.gif', width: preview.width * previewScale, height: preview.height * previewScale, fps: preview.fps, frames: preview.durationInFrames, durationSeconds: preview.durationInFrames / preview.fps, fullWorkflow: true, playbackRate: preview.props.playbackRate, dither: 'none', frameDifferenceMode: 'rectangle' } }, null, 2) + '\n');
     console.log(`Video, preview, and poster are ready in ${output}`);
   }
 } finally {

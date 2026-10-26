@@ -1,11 +1,12 @@
-import {mkdirSync, writeFileSync} from 'node:fs';
+import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {dirname, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 // An original, deterministic instrumental bed. No samples or remote assets are used.
 const sampleRate = 44_100;
-const duration = 42;
-const frames = sampleRate * duration;
+const session = JSON.parse(readFileSync(new URL('../public/session/manifest.json', import.meta.url)));
+const duration = session.duration + 7;
+const frames = Math.round(sampleRate * duration);
 const left = new Float64Array(frames);
 const right = new Float64Array(frames);
 const tempo = 100;
@@ -77,10 +78,11 @@ function bass(start, midi, gain) {
   });
 }
 
-// Seventeen short bars lead into a sustained tonic for the closing title.
-for (let bar = 0; bar < 17; bar += 1) {
+// Short bars follow the measured session duration and resolve to a closing tonic.
+const bars = Math.ceil(duration / (4 * beat));
+for (let bar = 0; bar < bars; bar += 1) {
   const start = bar * 4 * beat;
-  const chord = harmony[bar % harmony.length];
+  const chord = harmony[bar === bars - 1 ? 0 : bar % harmony.length];
   chord.forEach((note, index) => {
     const pan = [-0.55, 0.5, -0.3, 0.3, 0][index];
     pad(start - (bar === 0 ? 0 : 0.25), note + (index === 0 ? 12 : 0), 3.15,
@@ -88,9 +90,9 @@ for (let bar = 0; bar < 17; bar += 1) {
   });
 
   bass(start + 0.025, chord[0] - 12, bar === 0 ? 0.06 : 0.085);
-  if (bar > 0 && bar < 16) bass(start + 2 * beat, chord[0] - 12, 0.055);
+  if (bar > 0 && bar < bars - 1) bass(start + 2 * beat, chord[0] - 12, 0.055);
 
-  if (bar > 0 && bar < 16) {
+  if (bar > 0 && bar < bars - 1) {
     const pattern = bar % 2 === 0 ? [2, 3, 4, 3, 1, 3] : [3, 1, 2, 4, 3, 2];
     const offsets = [0.5, 1.25, 2, 2.5, 3.25, 3.75];
     pattern.forEach((index, step) => {
@@ -104,7 +106,7 @@ for (let bar = 0; bar < 17; bar += 1) {
 
 // A simple answering phrase creates gentle landmarks at each visual chapter.
 [[9.6, 76], [10.5, 74], [18.9, 72], [19.8, 71], [28.8, 76], [29.7, 79],
-  [37.2, 74], [38.1, 72]].forEach(([start, note], index) => {
+  [37.2, 74], [38.1, 72], [46.8, 76], [47.7, 74], [duration - 4.2, 72]].forEach(([start, note], index) => {
   pluck(start, note, 0.053, index % 2 === 0 ? -0.18 : 0.18);
 });
 

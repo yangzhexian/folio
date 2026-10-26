@@ -1,24 +1,12 @@
 # Folio introduction film
 
-This directory contains the editable [Remotion](https://github.com/remotion-dev/remotion) source for Folio's introduction film. The full film is 42 seconds at 1920 × 1080 and 30 fps, with English titles, Chinese captions, and an original instrumental soundtrack. A silent 12-second GIF at 960 × 540 and 12 fps provides the animated preview in the repository README.
+This directory contains the editable [Remotion](https://github.com/remotion-dev/remotion) source for Folio's continuous product tour. The full film renders at 2560 × 1440 and 30 fps, with English titles, Chinese captions, and an original instrumental soundtrack. It lasts approximately one minute; the exact duration follows the measured capture in `public/session/manifest.json`. The silent README GIF shows the complete workflow at 1920 × 1080 and 12 fps, played at normal speed for approximately 60.7 seconds. Search, editing, image/PDF preview, file management, theme colors, and language switching remain connected in one continuous session.
 
-The film shows the current Folio interface using explicitly fictional records, contact details, and attachment metadata. The capture script renders the real application frontend with a mocked native bridge; it never reads a personal vault or opens the demonstration attachments. The film presents current features, while planned features remain in the project roadmap.
-
-## Storyboard
-
-| Time | Scene | Focus |
-| --- | --- | --- |
-| 0–4 s | Introduction | Folio and its visual identity |
-| 4–11 s | Organize | Collections and structured personal information |
-| 11–18 s | Search and copy | Field results, synonyms, and quick access |
-| 18–25 s | Edit and calendar | Flexible fields and date navigation |
-| 25–31 s | Files | Named attachments and file actions |
-| 31–37 s | Appearance and language | Accent colors, dark mode, and Chinese UI |
-| 37–42 s | Closing | Personal information within reach |
+The right-hand demonstration is one uninterrupted recording of the real Folio frontend. Search, copying, field dragging, typing, saving, PNG preview, PDF switching and pagination, file renaming, appearance, and language changes happen in the same application session. The application window persists across every chapter. In the GIF, the video, cursor, camera, titles, and Chinese captions share the same normal playback rate, preserving the complete operation without cuts or separate chapter freezes. A global palette without error-diffusion dithering and rectangle-based differences keep text clear and reduce the animated file size. Only the surrounding captions and a gentle camera move change; the application is never replaced by chapter screenshots or sped up between operations. The [storyboard](storyboard.md) records the camera plan and workflow.
 
 ## Setup and rendering
 
-Run all commands below from the repository root. Install the application dependencies and the separate video dependencies before rendering:
+Run these commands from the repository root:
 
 ```sh
 npm ci
@@ -26,16 +14,14 @@ npm ci --prefix video
 npm run video:render
 ```
 
-The render command generates the original soundtrack, bundles the Remotion composition, renders review stills and a poster, exports the MP4 and GIF, and verifies the MP4's dimensions, duration, and audio stream. The committed screenshots are sufficient for rendering; recapture them when the application interface changes.
+The committed continuous capture is sufficient for rendering. The command synthesizes the original soundtrack, bundles the Remotion composition, renders review frames and a poster, exports the MP4 and GIF, and verifies dimensions, duration, frame rate, and audio. Regenerate the source session after relevant interface changes:
 
 ```sh
 npm run video:capture
 npm run video:render
 ```
 
-Capture requires the root project's Playwright installation and an installed Chrome browser by default. It starts a local Vite server on port 1420 when needed and closes the server it started after capture. To use another supported Playwright browser channel, set `PLAYWRIGHT_CHANNEL`, such as `msedge`. To select the browser executable used for Remotion rendering, set `REMOTION_BROWSER_EXECUTABLE` to its absolute path. These are separate browser settings.
-
-For example, in PowerShell:
+Capture requires the root project's Playwright installation and an installed Chrome browser by default. It starts a local Vite server on port 1420 when needed and closes only the server it started. Set `FOLIO_CAPTURE_URL` to use an existing local development server. Set `PLAYWRIGHT_CHANNEL` to select another installed channel such as `msedge`. Set `REMOTION_BROWSER_EXECUTABLE` to select the executable used by the renderer; this is separate from Playwright's channel setting. The capture encoder uses the FFmpeg executable bundled with Remotion on Windows.
 
 ```powershell
 $env:PLAYWRIGHT_CHANNEL = 'chrome'
@@ -44,51 +30,52 @@ npm run video:capture
 npm run video:render
 ```
 
-Open Remotion Studio to inspect the timeline and edit the composition:
+The capture script records timestamped Chrome DevTools Protocol frames at 1920 × 1200. A 4/3 application display scale keeps text readable while viewport-height constraints preserve the equivalent 1440 × 900 layout. A visible animated cursor, click rings, gradual typing, scrolling, and a real pointer drag are captured with the interface. FFmpeg retains the measured time between frames, including natural pauses, and encodes one constant-rate 30 fps source. The manifest records actual chapter times, verified field order, renamed attachment, browser errors, and remote requests. Capture fails if the demonstrated changes do not persist or if the frontend requests remote resources.
+
+Open the editable timeline, or render only review frames:
 
 ```sh
 npm run video:studio
-```
-
-The root Studio command generates the soundtrack before starting Studio, so it also works after a clean checkout. Select `FolioIntro` for the full film or `FolioPreview` for the shorter silent montage.
-
-Check TypeScript or render only the review stills without encoding the full movie:
-
-```sh
 npm run typecheck --prefix video
 npm run audio --prefix video
 npm run stills --prefix video
+npm run verify --prefix video
 ```
 
-Generate audio before rendering stills after a clean checkout because the full composition references the generated WAV. `npm run video:render` performs this preparation automatically.
+The root Studio command generates the soundtrack first, so it works after a clean checkout. Select `FolioIntro` for the full film or `FolioPreview` for the complete workflow at normal speed. The soundtrack is ignored by Git and regenerated automatically by the render and Studio commands.
 
 ## Files and outputs
 
 | Path from repository root | Purpose |
 | --- | --- |
-| `video/src/Film.tsx` | Scene layout, animation, titles, captions, and soundtrack placement |
-| `video/src/index.tsx` | Full-film and GIF composition definitions |
-| `video/scripts/capture.mjs` | Capture the current app with synthetic demonstration data |
-| `video/scripts/audio.mjs` | Generate the original 42-second stereo soundtrack |
-| `video/scripts/render.mjs` | Render stills, poster, MP4, GIF, and metadata |
-| `video/public/screens/` | Captured screenshots and capture manifest |
-| `video/public/audio/folio.wav` | Generated soundtrack; recreated by the audio script |
-| `docs/media/folio-intro.mp4` | Full 1080p film with H.264 video and AAC audio |
-| `docs/media/folio-preview.gif` | Animated README preview |
-| `docs/media/folio-poster.png` | Static poster |
-| `docs/media/index.html` | Standalone player with native controls and no remote resources |
-| `docs/media/folio-intro.en.vtt` | Optional English caption track for the standalone player |
-| `docs/media/render-metadata.json` | Rendered MP4 metadata and Remotion version |
-| `artifacts/video-check/` | Review stills for checking text, framing, and transitions |
+| `video/storyboard.md` | Workflow and camera plan written before production |
+| `video/src/Film.tsx` | Persistent application window, camera, titles, and bilingual captions |
+| `video/src/index.tsx` | 2K full-film and GIF compositions |
+| `video/scripts/capture.mjs` | Reproducible continuous capture using fictional data |
+| `video/scripts/audio.mjs` | Original stereo soundtrack matching the measured duration |
+| `video/scripts/render.mjs` | Render stills, MP4, GIF, poster, captions, and metadata |
+| `video/scripts/verify.mjs` | Verify native browser playback, chapter seeking, and the English caption track |
+| `video/public/session/continuous.mp4` | One continuous 1920 × 1200 source recording |
+| `video/public/session/manifest.json` | Measured cue times and capture verification |
+| `video/public/session/contact-card.png` | Generated fictional PNG attachment |
+| `video/public/session/certificate.pdf` | Generated fictional two-page PDF attachment |
+| `video/public/session/opening.png` | The initial application frame, held during the opening |
+| `video/public/session/closing.png` | The final application frame, held during the closing |
+| `docs/media/folio-intro.mp4` | Full 2560 × 1440 H.264 film with AAC audio |
+| `docs/media/folio-preview.gif` | Complete workflow at 1920 × 1080, normal speed, approximately 60.7 seconds |
+| `docs/media/folio-poster.png` | Static 2K poster |
+| `docs/media/index.html` | Local player with native controls and no remote resources |
+| `docs/media/folio-intro.en.vtt` | English caption track using measured cue timing |
+| `docs/media/render-metadata.json` | Verified output metadata and source capture information |
+| `artifacts/video-check/` | Review frames for framing, text, preview controls, and transitions |
+| `artifacts/video-session-capture/` | Temporary timestamped JPEG frames and FFmpeg concat input |
 
-The repository README displays a clickable GIF linked to the MP4 in `docs/media`. This keeps the animated preview usable in GitHub's Markdown rendering without relying on an inline HTML video player or external video hosting. Open or download the linked MP4 to watch the full film with sound.
+The repository README links its animated 1080p GIF to the full MP4. To regenerate only the GIF and review stills without encoding the full film, run `node video/scripts/render.mjs --preview` after generating the soundtrack. Open the standalone HTML player for native playback controls and the optional English caption track. No external video hosting is needed.
 
-## Dependencies and asset provenance
+## Data and asset provenance
 
-Remotion packages are pinned to version `4.0.538` together. The video dependency tree also overrides `zod` to `4.6.6` for the security fix. The separate `video/package.json` and lockfile keep video production dependencies outside Folio's application dependency graph and desktop bundle.
+All personal details are fictional. The contact card is rendered locally from HTML, and the two-page certificate is generated locally from a minimal vector PDF. The script mocks only the Tauri storage boundary, while the actual frontend searches and edits records, decodes the image, renders the PDF through the bundled PDF.js worker, handles pagination and zoom, and updates settings. Clipboard and file-path operations use synthetic metadata. No personal vault, external document application, or remote service is accessed.
 
-The soundtrack is synthesized deterministically in Node.js using warm pads, muted plucks, and sparse bass at 100 BPM. It uses no samples, vocals, or third-party music assets. The WAV is stereo, 44.1 kHz, and 16 bit, with a 0.5-second fade in and a 2-second fade out. The generator logs its duration, peak, RMS, and file size after rendering.
+Remotion packages remain pinned together at `4.0.538`; the separate video dependency tree keeps production tools outside Folio's application bundle. The music is synthesized deterministically in Node.js with warm pads, muted plucks, and sparse bass at 100 BPM. It contains no samples, vocals, or third-party music assets. Output is 44.1 kHz stereo, 16-bit PCM before AAC encoding, with a short opening fade and a two-second closing fade. The generator logs duration, peak, RMS, and file size.
 
-Typography uses available system fonts, including Segoe UI and Microsoft YaHei. Font files are not redistributed. Rendering on another operating system or with different installed fonts may change line wrapping and layout, so review the generated stills when changing the rendering environment.
-
-See the [official Remotion documentation](https://www.remotion.dev/docs/) for authoring and rendering APIs and the [Remotion license](https://github.com/remotion-dev/remotion/blob/main/LICENSE.md) for its terms. These links document the upstream project; this guide does not assign a new license to Remotion or to system fonts.
+Typography uses available system fonts, including Segoe UI and Microsoft YaHei. Font files are not redistributed. Different installed fonts can affect wrapping; inspect the rendered review frames after changing environments. See the [official Remotion documentation](https://www.remotion.dev/docs/) and [Remotion license](https://github.com/remotion-dev/remotion/blob/main/LICENSE.md) for upstream details and terms.

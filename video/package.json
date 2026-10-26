@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "stills": "node scripts/render.mjs --stills",
     "render": "node scripts/audio.mjs && node scripts/render.mjs",
-    "refresh": "npm run capture && npm run render"
+    "refresh": "npm run capture && npm run render",
+    "verify": "node scripts/verify.mjs"
   },
   "dependencies": {
     "@remotion/bundler": "4.0.538",

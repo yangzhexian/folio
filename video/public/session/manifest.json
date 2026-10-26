@@ -1,0 +1,57 @@
+{
+  "viewport": {
+    "width": 1920,
+    "height": 1200
+  },
+  "uiScale": 1.3333333333333333,
+  "fps": 30,
+  "duration": 53.6,
+  "frameCount": 1838,
+  "cues": [
+    {
+      "id": "organize",
+      "time": 0.058
+    },
+    {
+      "id": "search",
+      "time": 2.009
+    },
+    {
+      "id": "edit",
+      "time": 8.312
+    },
+    {
+      "id": "image",
+      "time": 19.011
+    },
+    {
+      "id": "pdf",
+      "time": 25.503
+    },
+    {
+      "id": "files",
+      "time": 34.015
+    },
+    {
+      "id": "appearance",
+      "time": 43.002
+    },
+    {
+      "id": "language",
+      "time": 50.503
+    }
+  ],
+  "data": "Fictional records and locally generated PNG/PDF only. One continuous actual frontend session.",
+  "verification": {
+    "fieldOrder": [
+      "email",
+      "full-name",
+      "qq",
+      "city",
+      "document"
+    ],
+    "renamedFile": "identity_certificate.pdf",
+    "browserErrors": [],
+    "remoteRequests": []
+  }
+}
