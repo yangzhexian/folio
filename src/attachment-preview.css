@@ -20,5 +20,11 @@
 .preview-zoom { min-width: 44px; text-align: center; }
 .preview-pages { border-left: 1px solid var(--line); padding-left: 20px; }
 .preview-page-input { width: 52px; height: 29px; text-align: center; font-size: 12px; padding: 4px; }
+body:has(.preview-native-root) { min-width: 0; overflow: hidden; }
+.preview-native-root, .preview-native-shell { width: 100%; height: 100dvh; min-height: 0; overflow: hidden; }
+.preview-native-shell .attachment-preview { width: 100%; height: 100%; border: 0; border-radius: 0; box-shadow: none; }
+.preview-window-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; height: 100%; padding: 24px; color: var(--muted); font-size: 13px; }
+.preview-window-empty > div { display: flex; gap: 10px; }
+.preview-window-toast { bottom: 76px; z-index: 10; }
 .app-shell:has(.attachment-preview) .toast { bottom: max(90px, calc((100dvh - 900px) / 2 + 66px)); }
 @media (max-width: 950px) { .preview-backdrop { padding: 14px; } .attachment-preview { height: calc(100dvh - 28px); } .preview-header { gap: 10px; padding: 10px 12px; } .preview-control-group { gap: 3px; } }

@@ -33,6 +33,7 @@ export interface Attachment {
   absolutePath: string;
   size: number;
   createdAt: string;
+  revision?: string;
 }
 
 export interface Snapshot {

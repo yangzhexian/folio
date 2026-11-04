@@ -65,6 +65,8 @@ pub struct StoredAttachment {
     pub relative_path: String,
     pub size: u64,
     pub created_at: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub revision: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]

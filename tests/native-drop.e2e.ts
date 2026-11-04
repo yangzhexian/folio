@@ -34,6 +34,7 @@ async function openMockDesktop(page: Page, empty = false, externalOnly = false) 
       };
       mockIPC(async (command, args) => {
         state.calls.push({ command, args });
+        if (command === 'open_preview_window') return false;
         if (command === 'load_snapshot') {
           if (state.failNextLoad) { state.failNextLoad = false; throw new Error('Synthetic refresh failure'); }
           return structuredClone(state.snapshot);

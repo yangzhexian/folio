@@ -1,5 +1,6 @@
 pub mod cli;
 mod model;
+mod preview_window;
 mod storage;
 
 use model::{Attachment, ProfileRecord, Result, Snapshot};
@@ -99,13 +100,34 @@ async fn import_dropped_attachments(
 }
 
 #[tauri::command]
-async fn rename_attachment(app: tauri::AppHandle, id: String, name: String) -> Result<Attachment> {
-    with_blocking_store(app, move |store| store.rename_attachment(&id, &name)).await
+async fn rename_attachment(
+    app: tauri::AppHandle,
+    id: String,
+    name: String,
+    expected_revision: Option<String>,
+) -> Result<Attachment> {
+    with_blocking_store(app, move |store| {
+        if let Some(expected) = expected_revision {
+            store.check_attachment_revision(&id, &expected)?;
+        }
+        store.rename_attachment(&id, &name)
+    })
+    .await
 }
 
 #[tauri::command]
-async fn remove_attachment(app: tauri::AppHandle, id: String) -> Result<()> {
-    with_blocking_store(app, move |store| store.remove_attachment(&id)).await
+async fn remove_attachment(
+    app: tauri::AppHandle,
+    id: String,
+    expected_revision: Option<String>,
+) -> Result<()> {
+    with_blocking_store(app, move |store| {
+        if let Some(expected) = expected_revision {
+            store.check_attachment_revision(&id, &expected)?;
+        }
+        store.remove_attachment(&id)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -255,9 +277,14 @@ pub fn run() {
             // Surface initialization errors in the existing load-error UI instead of silently
             // choosing another data folder or exiting before the user can read the error.
             app.manage(AppState(Mutex::new(store)));
+            app.manage(preview_window::PreviewWindowState::default());
             Ok(())
         })
+        .on_window_event(preview_window::on_window_event)
         .invoke_handler(tauri::generate_handler![
+            preview_window::open_preview_window,
+            preview_window::load_preview_session,
+            preview_window::set_preview_pinned,
             load_snapshot,
             save_record,
             delete_record,

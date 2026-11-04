@@ -12,7 +12,7 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 
 const MAX_INPUT_BYTES: u64 = 8 * 1024 * 1024;
-const HELP: &str = "Folio local data CLI\n\nUsage: folio-cli [--data-dir ABSOLUTE_DIRECTORY] COMMAND [OPTIONS]\n\nCommands:\n  info                                      Show the selected library path and existence\n  schema                                    Print the record input schema and limits\n  list                                      List active record summaries\n  get --id UUID                             Read one active record and its attachments\n  validate --input FILE                     Validate record JSON without writing\n  create --input FILE                       Create one record; an existing ID is rejected\n  update --input FILE --expected-updated-at TIMESTAMP\n                                            Replace one active record if its revision matches\n  attach --record-id UUID --input FILE       Import a JSON array of absolute file paths\n\nUse --input - to read UTF-8 JSON from stdin. The default data directory is data\nbeside this executable. Use info before writing to an existing library. Commands\nreturn JSON; errors go to stderr. Exit codes: 0 success, 1 operation failed,\n2 invalid arguments/input, 3 record conflict. No files are uploaded.\n";
+const HELP: &str = "Folio local data CLI\n\nUsage: folio-cli [--data-dir ABSOLUTE_DIRECTORY] COMMAND [OPTIONS]\n\nCommands:\n  info                                      Show the selected library path and existence\n  schema                                    Print input schemas, capabilities, and limits\n  list                                      List active record summaries\n  get --id UUID                             Read a record and its attachment revisions\n  validate --input FILE                     Validate record JSON without writing\n  create --input FILE                       Create one record; an existing ID is rejected\n  update --input FILE --expected-updated-at TIMESTAMP\n                                            Replace one active record if its revision matches\n  attach --record-id UUID --input FILE       Import a JSON array of absolute file paths\n  field-update --record-id UUID --field-id ID --expected-updated-at TIMESTAMP --input FILE\n                                            Patch one field without changing other fields\n  field-delete --record-id UUID --field-id ID --expected-updated-at TIMESTAMP\n                                            Delete one field, preserving remaining order\n  attachment-rename --record-id UUID --attachment-id UUID --expected-revision TOKEN --input FILE\n                                            Rename using JSON {\"name\":\"stem\"}\n  attachment-replace --record-id UUID --attachment-id UUID --expected-revision TOKEN --input FILE\n                                            Replace bytes using JSON {\"path\":\"absolute source path\"}\n  attachment-delete --record-id UUID --attachment-id UUID --expected-revision TOKEN\n                                            Soft-delete one active attachment\n\nUse --input - to read UTF-8 JSON from stdin. The default data directory is data\nbeside this executable. Use info before writing to an existing library. Commands\nreturn JSON; errors go to stderr. Exit codes: 0 success, 1 operation failed,\n2 invalid arguments/input, 3 revision or record conflict. No files are uploaded.\n";
 
 #[derive(Debug)]
 struct CliError {
@@ -43,6 +43,12 @@ fn storage_error(message: String) -> CliError {
             3,
         ),
         "RECORD_NOT_FOUND" => error("RECORD_NOT_FOUND", "No active record has that ID.", 1),
+        "FIELD_NOT_FOUND" => error("FIELD_NOT_FOUND", "No field with that ID exists in the selected record.", 1),
+        "INVALID_FIELD_ID" => error("INVALID_FIELD_ID", "A field ID must contain 1-200 UTF-8 bytes.", 2),
+        "INVALID_FIELD_PATCH" => error("INVALID_FIELD_PATCH", "Use a nonempty object containing valid label, labelZh, value, kind, or sensitive properties. Only labelZh accepts null.", 2),
+        "ATTACHMENT_NOT_FOUND" => error("ATTACHMENT_NOT_FOUND", "No active attachment with that ID belongs to the selected record.", 1),
+        "ATTACHMENT_CONFLICT" => error("ATTACHMENT_CONFLICT", "The attachment changed. Read get again and reconcile the requested edit with its latest revision.", 3),
+        "INVALID_ATTACHMENT_SOURCE" => error("INVALID_ATTACHMENT_SOURCE", "Choose an absolute path to a regular local file up to 2 GiB.", 2),
         "LIBRARY_NOT_FOUND" => error(
             "LIBRARY_NOT_FOUND",
             "No library exists at the selected data directory. Check info and --data-dir.",
@@ -82,6 +88,18 @@ struct RecordInput {
     created_at: Option<String>,
     #[serde(default)]
     updated_at: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AttachmentRenameInput {
+    name: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AttachmentReplaceInput {
+    path: String,
 }
 
 impl RecordInput {
@@ -126,7 +144,14 @@ fn arguments(values: Vec<OsString>, default_root: PathBuf) -> CliResult<Argument
         if flag.starts_with("--") {
             if !matches!(
                 flag,
-                "--data-dir" | "--input" | "--id" | "--record-id" | "--expected-updated-at"
+                "--data-dir"
+                    | "--input"
+                    | "--id"
+                    | "--record-id"
+                    | "--expected-updated-at"
+                    | "--field-id"
+                    | "--attachment-id"
+                    | "--expected-revision"
             ) {
                 return Err(error(
                     "INVALID_ARGUMENT",
@@ -175,6 +200,20 @@ fn arguments(values: Vec<OsString>, default_root: PathBuf) -> CliResult<Argument
         "validate" | "create" => &["--input"],
         "update" => &["--input", "--expected-updated-at"],
         "attach" => &["--record-id", "--input"],
+        "field-update" => &[
+            "--record-id",
+            "--field-id",
+            "--expected-updated-at",
+            "--input",
+        ],
+        "field-delete" => &["--record-id", "--field-id", "--expected-updated-at"],
+        "attachment-rename" | "attachment-replace" => &[
+            "--record-id",
+            "--attachment-id",
+            "--expected-revision",
+            "--input",
+        ],
+        "attachment-delete" => &["--record-id", "--attachment-id", "--expected-revision"],
         _ => {
             return Err(error(
                 "INVALID_ARGUMENT",
@@ -295,7 +334,8 @@ fn parse_input<T: serde::de::DeserializeOwned>(
 
 fn schema() -> Value {
     json!({
-        "schemaVersion": 1,
+        "schemaVersion": 2,
+        "capabilities": ["records.create", "records.update", "fields.update", "fields.delete", "attachments.import", "attachments.rename", "attachments.replace", "attachments.delete"],
         "record": {
             "type": "object", "additionalProperties": false, "required": ["id", "category", "title"],
             "properties": {
@@ -321,6 +361,16 @@ fn schema() -> Value {
         },
         "limits": {"jsonInputBytes": MAX_INPUT_BYTES, "subtitleUtf8Bytes": 4000, "notesUtf8Bytes": 1000000, "tags": 100, "tagUtf8Bytes": 200, "fieldIdUtf8Bytes": 200, "fieldLabelUtf8Bytes": 1000, "fieldValueUtf8Bytes": 1000000, "attachmentsPerCommand": 100, "attachmentBytes": 2147483648u64},
         "attachmentInput": {"type": "array", "items": {"type": "string", "description": "Absolute path to a local regular source file."}, "maxItems": 100},
+        "fieldPatch": {"type": "object", "additionalProperties": false, "minProperties": 1, "properties": {
+            "label": {"type": "string"}, "labelZh": {"type": ["string", "null"]}, "value": {"type": "string"},
+            "kind": {"enum": ["text", "multiline", "date", "email", "phone", "url"]}, "sensitive": {"type": "boolean"}
+        }},
+        "attachmentRenameInput": {"type": "object", "additionalProperties": false, "required": ["name"], "properties": {"name": {"type": "string", "minLength": 1, "maxLength": 200, "description": "Filename suffix without path separators; category prefix and current extension are managed automatically."}}},
+        "attachmentReplaceInput": {"type": "object", "additionalProperties": false, "required": ["path"], "properties": {"path": {"type": "string", "description": "Absolute path to a regular local source file, up to 2 GiB."}}},
+        "fieldSemantics": "field-update patches one field without changing its ID or array position; labelZh:null clears its Chinese label. field-delete removes only the chosen field. Both require the exact record.updatedAt from get and advance it. Field deletion has no separate trash or CLI undo.",
+        "attachmentRevisionSemantics": "get returns each attachment.revision as an opaque token. attachment-rename, attachment-replace, and attachment-delete require --expected-revision and the correct --record-id. GUI rename/removal/restore and CLI replacement rotate the token. Legacy metadata gets a stable derived token without a database write. Restore assigns fresh tokens; backups omit them.",
+        "attachmentReplacementSemantics": "Replacement preserves attachment ID, record ID, and createdAt. It updates originalName, size, extension, managed path, and revision. A shortened old suffix plus a fresh version suffix forms the new filename. Copy and database commit complete before publication. The original source and previous managed copy remain unchanged; previousPath identifies the unreferenced recovery copy. That old name stays reserved while its file exists. Failed replacements preserve the active attachment.",
+        "attachmentDeletionSemantics": "attachment-delete hides only that attachment using existing soft deletion. The managed bytes remain on disk; normal get, preview, and mutation commands cannot access the removed ID. No CLI undo command is provided. Verify absence with get after an uncertain result.",
         "updateSemantics": "Full replacement of editable record content, not a partial patch. Fetch the latest record and preserve unrelated fields. createdAt is preserved and updatedAt always advances.",
         "attachmentSemantics": "Import copies source files. A repeated attach command creates new managed copies; verify get after an uncertain result before retrying."
     })
@@ -350,7 +400,7 @@ fn execute(args: Arguments, stdin: &mut dyn Read) -> CliResult<Value> {
             } else {
                 None
             };
-            let expected = if command == "update" {
+            let expected = if args.options.contains_key("--expected-updated-at") {
                 let value = option_text(&args, "--expected-updated-at")?;
                 validate_date(value).map_err(|message| error("INVALID_ARGUMENT", message, 2))?;
                 Some(value)
@@ -364,7 +414,7 @@ fn execute(args: Arguments, stdin: &mut dyn Read) -> CliResult<Value> {
             };
             let id = if command == "get" {
                 Some(option_text(&args, "--id")?)
-            } else if command == "attach" {
+            } else if args.options.contains_key("--record-id") {
                 Some(option_text(&args, "--record-id")?)
             } else {
                 None
@@ -372,6 +422,65 @@ fn execute(args: Arguments, stdin: &mut dyn Read) -> CliResult<Value> {
             if let Some(id) = id {
                 validate_id(id).map_err(|message| error("INVALID_ARGUMENT", message, 2))?;
             }
+            let field_id = if args.options.contains_key("--field-id") {
+                let value = option_text(&args, "--field-id")?;
+                if value.is_empty() || value.len() > 200 {
+                    return Err(storage_error("INVALID_FIELD_ID".into()));
+                }
+                Some(value)
+            } else {
+                None
+            };
+            let patch = if command == "field-update" {
+                let value = parse_input::<Value>(&args, stdin)?;
+                Store::validate_agent_field_patch(&value).map_err(storage_error)?;
+                Some(value)
+            } else {
+                None
+            };
+            let attachment_id = if args.options.contains_key("--attachment-id") {
+                let value = option_text(&args, "--attachment-id")?;
+                validate_id(value).map_err(|message| error("INVALID_ARGUMENT", message, 2))?;
+                Some(value)
+            } else {
+                None
+            };
+            let revision = if args.options.contains_key("--expected-revision") {
+                let value = option_text(&args, "--expected-revision")?;
+                if value.is_empty() || value.len() > 200 || value.contains('\0') {
+                    return Err(error(
+                        "INVALID_ARGUMENT",
+                        "Pass the exact attachment revision returned by get.",
+                        2,
+                    ));
+                }
+                Some(value)
+            } else {
+                None
+            };
+            let rename = if command == "attachment-rename" {
+                let value = parse_input::<AttachmentRenameInput>(&args, stdin)?;
+                if value.name.trim().is_empty()
+                    || value.name.contains(['/', '\\'])
+                    || value.name == "."
+                    || value.name == ".."
+                    || value.name.chars().count() > 200
+                {
+                    return Err(error(
+                        "INVALID_ARGUMENT",
+                        "Use a filename stem of 1-200 characters without path separators.",
+                        2,
+                    ));
+                }
+                Some(value.name)
+            } else {
+                None
+            };
+            let replacement = if command == "attachment-replace" {
+                Some(parse_input::<AttachmentReplaceInput>(&args, stdin)?.path)
+            } else {
+                None
+            };
             if !args.root.is_dir() {
                 return Err(storage_error("LIBRARY_NOT_FOUND".into()));
             }
@@ -402,6 +511,36 @@ fn execute(args: Arguments, stdin: &mut dyn Read) -> CliResult<Value> {
                 }
                 "attach" => {
                     json!({"attachments": store.import_dropped_files(id.unwrap(), &paths.unwrap()).map_err(storage_error)?, "dataDir": display_path(store.root())})
+                }
+                "field-update" => {
+                    json!({"record": store.agent_field_update(id.unwrap(), field_id.unwrap(), expected.unwrap(), patch.as_ref().unwrap()).map_err(storage_error)?, "dataDir": display_path(store.root())})
+                }
+                "field-delete" => {
+                    json!({"record": store.agent_field_delete(id.unwrap(), field_id.unwrap(), expected.unwrap()).map_err(storage_error)?, "deletedFieldId": field_id.unwrap(), "dataDir": display_path(store.root())})
+                }
+                "attachment-rename" => {
+                    json!({"attachment": store.agent_attachment_rename(id.unwrap(), attachment_id.unwrap(), revision.unwrap(), rename.as_ref().unwrap()).map_err(storage_error)?, "dataDir": display_path(store.root())})
+                }
+                "attachment-replace" => {
+                    let (attachment, previous_path) = store
+                        .agent_attachment_replace(
+                            id.unwrap(),
+                            attachment_id.unwrap(),
+                            revision.unwrap(),
+                            replacement.as_ref().unwrap(),
+                        )
+                        .map_err(storage_error)?;
+                    json!({"attachment": attachment, "previousPath": previous_path, "dataDir": display_path(store.root())})
+                }
+                "attachment-delete" => {
+                    store
+                        .agent_attachment_delete(
+                            id.unwrap(),
+                            attachment_id.unwrap(),
+                            revision.unwrap(),
+                        )
+                        .map_err(storage_error)?;
+                    json!({"deleted": true, "attachmentId": attachment_id.unwrap(), "recordId": id.unwrap(), "dataDir": display_path(store.root())})
                 }
                 _ => unreachable!(),
             }

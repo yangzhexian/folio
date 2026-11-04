@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, Copy, ExternalLink, FolderOpen, Maximize, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, ExternalLink, FolderOpen, Maximize, Pin, PinOff, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { api } from './api';
 import { previewKind } from './previewFormats';
 import PdfPreview from './PdfPreview';
@@ -18,6 +18,7 @@ const copy = {
     password: 'This PDF requires a password. Open it externally to continue.',
     tooLarge: 'This file exceeds the preview limit. Open it externally instead.',
     timeout: 'Preview took too long. Try again or open the file externally.', desktop: 'Open the desktop app to preview files.',
+    pin: 'Keep on top', unpin: 'Stop keeping on top',
   },
   zh: {
     title: '附件预览', previous: '上一个附件', next: '下一个附件',
@@ -29,6 +30,7 @@ const copy = {
     password: '此 PDF 需要密码，请使用外部应用打开。',
     tooLarge: '文件超过预览限制，请使用外部应用打开。',
     timeout: '预览加载超时，请重试或使用外部应用打开。', desktop: '请在桌面应用中预览文件。',
+    pin: '窗口置顶', unpin: '取消置顶',
   },
 };
 
@@ -155,13 +157,23 @@ function PreviewPane({ file, locale }: { file: Attachment; locale: Locale }) {
   </div>;
 }
 
-export function AttachmentPreview({ files, initialId, locale, busy, onClose, onOpen, onCopyPath, onReveal }: {
+export function AttachmentPreview({ files, initialId, locale, busy, onClose, onOpen, onCopyPath, onReveal, selectedId, onSelected, native }: {
   files: Attachment[]; initialId: string; locale: Locale; busy: boolean; onClose: () => void;
   onOpen: (file: Attachment) => void; onCopyPath: (file: Attachment) => void; onReveal: (file: Attachment) => void;
+  selectedId?: string; onSelected?: (id: string) => void;
+  native?: { pinned: boolean; pinning: boolean; onTogglePin: () => void };
 }) {
   const text = copy[locale];
-  const [index, setIndex] = useState(() => Math.max(0, files.findIndex(file => file.id === initialId)));
+  const [localId, setLocalId] = useState(initialId);
+  const index = Math.max(0, files.findIndex(file => file.id === (selectedId ?? localId)));
   const file = files[index];
+  const navigation = useRef({ files, index, onSelected });
+  navigation.current = { files, index, onSelected };
+  const move = useCallback((direction: number) => {
+    const current = navigation.current;
+    const next = current.files[Math.max(0, Math.min(current.files.length - 1, current.index + direction))];
+    if (next) { setLocalId(next.id); current.onSelected?.(next.id); }
+  }, []);
   const root = useRef<HTMLDivElement>(null);
   const opener = useRef(document.activeElement as HTMLElement | null);
   const closeRef = useRef(onClose);
@@ -171,14 +183,14 @@ export function AttachmentPreview({ files, initialId, locale, busy, onClose, onO
     dialog.querySelector<HTMLButtonElement>('.preview-close')?.focus();
     const key = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); closeRef.current(); }
-      else if (event.key === 'Tab') {
+      else if (event.key === 'Tab' && !native) {
         const controls = [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), [tabindex="0"]')].filter(element => element.offsetParent !== null);
         const first = controls[0], last = controls.at(-1);
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       } else if (!(event.target as HTMLElement).matches('input, textarea, select') && !event.ctrlKey && !event.metaKey && !event.altKey) {
-        if (event.key === 'ArrowLeft') { event.preventDefault(); setIndex(value => Math.max(0, value - 1)); }
-        if (event.key === 'ArrowRight') { event.preventDefault(); setIndex(value => Math.min(files.length - 1, value + 1)); }
+        if (event.key === 'ArrowLeft') { event.preventDefault(); move(-1); }
+        if (event.key === 'ArrowRight') { event.preventDefault(); move(1); }
       }
     };
     document.addEventListener('keydown', key);
@@ -186,26 +198,27 @@ export function AttachmentPreview({ files, initialId, locale, busy, onClose, onO
       document.removeEventListener('keydown', key);
       const previous = opener.current;
       // React removes the background's inert attribute during the same commit.
-      queueMicrotask(() => { if (previous?.isConnected && !document.querySelector('[role="dialog"]')) previous.focus({ preventScroll: true }); });
+      if (!native) queueMicrotask(() => { if (previous?.isConnected && !document.querySelector('[role="dialog"]')) previous.focus({ preventScroll: true }); });
     };
-  }, [files.length]);
+  }, [move, !!native]);
   if (!file) return null;
-  return <div className="modal-backdrop preview-backdrop"><div className="attachment-preview" ref={root} role="dialog" aria-modal="true" aria-label={text.title}>
+  return <div className={native ? 'preview-native-shell' : 'modal-backdrop preview-backdrop'}><div className="attachment-preview" ref={root} role={native ? 'region' : 'dialog'} aria-modal={native ? undefined : true} aria-label={text.title}>
     <header className="preview-header">
       <div className="preview-filename" aria-live="polite"><strong title={file.fileName}>{file.fileName}</strong></div>
       <div className="preview-control-group preview-attachment-navigation">
-        <Tool label={text.previous} disabled={index === 0} onClick={() => setIndex(value => value - 1)}><ChevronLeft size={18}/></Tool>
+        <Tool label={text.previous} disabled={index === 0} onClick={() => move(-1)}><ChevronLeft size={18}/></Tool>
         <span className="preview-position">{index + 1} / {files.length}</span>
-        <Tool label={text.next} disabled={index === files.length - 1} onClick={() => setIndex(value => value + 1)}><ChevronRight size={18}/></Tool>
+        <Tool label={text.next} disabled={index === files.length - 1} onClick={() => move(1)}><ChevronRight size={18}/></Tool>
       </div>
       <div className="preview-control-group preview-file-actions">
         <Tool label={text.external} disabled={busy} onClick={() => onOpen(file)}><ExternalLink size={17}/></Tool>
         <Tool label={text.path} disabled={busy} onClick={() => onCopyPath(file)}><Copy size={16}/></Tool>
         <Tool label={text.folder} disabled={busy} onClick={() => onReveal(file)}><FolderOpen size={18}/></Tool>
+        {native && <button type="button" className={`icon-button ${native.pinned ? 'active' : ''}`} aria-pressed={native.pinned} aria-label={native.pinned ? text.unpin : text.pin} title={native.pinned ? text.unpin : text.pin} disabled={native.pinning} onClick={native.onTogglePin}>{native.pinned ? <PinOff size={17}/> : <Pin size={17}/>}</button>}
         <span className="tool-divider"/>
         <button type="button" className="icon-button preview-close" title={text.close} aria-label={text.close} onClick={onClose}><X size={19}/></button>
       </div>
     </header>
-    <PreviewPane key={file.id} file={file} locale={locale}/>
+    <PreviewPane key={`${file.id}:${file.revision ?? ''}:${file.relativePath}`} file={file} locale={locale}/>
   </div></div>;
 }

@@ -1,6 +1,6 @@
 # Folio roadmap
 
-This roadmap tracks the delivered 0.4.1 local agent-entry workflow, the 0.4.0 preview foundation, and proposed follow-up work. The remaining items are planned, not released, and their order reflects user value and implementation dependencies rather than promised dates. Folio should remain a small, bilingual desktop library whose records, attachments, indexes, and backups stay on the user's computer.
+This roadmap tracks the delivered 0.4.2 visibility controls, independent preview windows, and expanded agent-entry workflow, the 0.4.0 preview foundation, and proposed follow-up work. The remaining items are planned, not released, and their order reflects user value and implementation dependencies rather than promised dates. Folio should remain a small, bilingual desktop library whose records, attachments, indexes, and backups stay on the user's computer.
 
 ## Current foundation
 
@@ -8,11 +8,13 @@ Folio supports structured records, bilingual field search, direct value copying,
 
 ## Delivered: local agent data entry
 
-The `folio-data-entry` skill and packaged `folio-cli.exe` let agents create and revise records and import attachments through the local Rust backend. JSON commands validate inputs, reject duplicate record IDs, and require the exact previous revision for updates. Desktop and CLI operations coordinate through a local lock, the desktop refreshes on focus, and stale editors retain their drafts while reporting a translated conflict. The skill describes verification, partial success, and duplicate-attachment avoidance. It does not start a server or bypass the managed storage layer. A future import workflow can build on these commands with mapping previews and per-file progress.
+The `folio-data-entry` skill and packaged `folio-cli.exe` let agents create and revise records and import attachments through the local Rust backend. JSON commands validate inputs, reject duplicate record IDs, and require the exact previous revision for updates. Desktop and CLI operations coordinate through a local lock, the desktop refreshes on focus, and stale editors retain their drafts while reporting a translated conflict. The skill describes verification, partial success, and duplicate-attachment avoidance. It does not start a server or bypass the managed storage layer. Version 0.4.2 adds revision-checked field edits/deletion and attachment rename/replacement/removal. A future import workflow can build on these commands with mapping previews and per-file progress.
 
 ## Delivered: the attachment preview foundation
 
 Version 0.4.0 opens supported attachments in a compact, bilingual preview dialog with zoom, fit, drag-to-pan, and attachment switching. PDFs support previous/next page and direct page entry. Navigation stays within the current record or the filtered Files results. **Open externally**, **Copy path**, and **Show in folder** remain available. Unsupported formats continue to open externally. Escape returns focus to the filename, and a failed or slow preview does not prevent switching or closing.
+
+Version 0.4.2 moves desktop previews into a reusable native window with independent minimize, maximize, resize, and pin-on-top controls. The main library stays usable, and attachment revisions keep active previews current after agent changes. Sensitive-field visibility now has a per-record total control and a persistent setting, enabled by default.
 
 | Follow-up | Proposed behavior | Acceptance checks |
 | --- | --- | --- |

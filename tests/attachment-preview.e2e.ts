@@ -53,6 +53,7 @@ async function openMockDesktop(page: Page, options: { locale?: 'en' | 'zh'; dark
       URL.revokeObjectURL = url => { state.activeUrls = state.activeUrls.filter(value => value !== url); originalRevoke(url); };
       mockIPC(async (command, args) => {
         state.calls.push({ command, args });
+        if (command === 'open_preview_window') return false;
         if (command === 'load_snapshot') return structuredClone(state.snapshot);
         if (command === 'read_attachment_preview') {
           const file = state.snapshot.attachments.find(file => file.id === args.id);

@@ -55,9 +55,9 @@ export const api = {
     const bytes = await invoke<ArrayBuffer | number[]>('read_attachment_preview', { id });
     return new Uint8Array(bytes);
   },
-  rename: (id: string, name: string) => invoke<Attachment>('rename_attachment', { id, name }),
-  remove: async (id: string) => {
-    if (desktop) return invoke<void>('remove_attachment', { id });
+  rename: (id: string, name: string, expectedRevision?: string) => invoke<Attachment>('rename_attachment', { id, name, expectedRevision }),
+  remove: async (id: string, expectedRevision?: string) => {
+    if (desktop) return invoke<void>('remove_attachment', { id, expectedRevision });
     const a = preview.attachments.find(a => a.id === id);
     if (a) removed.set(id, a);
     preview.attachments = preview.attachments.filter(a => a.id !== id);

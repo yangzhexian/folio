@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "attachment-preview-window",
+  "description": "The local attachment viewer can listen for updates, change its own title and theme, close, and copy paths. Rust validates attachment IDs and controls window creation and pinning.",
+  "windows": ["attachment-preview"],
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten", "core:window:allow-close", "core:window:allow-set-title", "core:window:allow-set-theme", "clipboard-manager:allow-write-text"]
+}

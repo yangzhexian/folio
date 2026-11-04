@@ -16,6 +16,7 @@ const MAX_BACKUP_ENTRIES: usize = 100_001;
 mod agent;
 mod migration;
 mod preview;
+mod preview_window;
 use agent::next_revision;
 
 /// Coordinate complete application/CLI operations, including vault replacement.
@@ -257,6 +258,7 @@ impl Store {
                     relative_path,
                     size,
                     created_at: now(),
+                    revision: Some(Uuid::new_v4().to_string()),
                 };
                 tx.execute(
                     "INSERT INTO attachments(id,record_id,body) VALUES(?1,?2,?3)",
@@ -298,7 +300,13 @@ impl Store {
             name,
             safe_extension(Path::new(&attachment.file_name)).as_deref(),
         );
+        attachment.revision = Some(Uuid::new_v4().to_string());
         if new_name == attachment.file_name {
+            db.execute(
+                "UPDATE attachments SET body=?1 WHERE id=?2 AND deleted=0",
+                params![serde_json::to_string(&attachment).map_err(err)?, id],
+            )
+            .map_err(err)?;
             return self.public_attachment(attachment);
         }
         let relative_path = format!("attachments/{}/{new_name}", attachment.record_id);
@@ -342,19 +350,27 @@ impl Store {
 
     pub fn remove_attachment(&self, id: &str) -> Result<()> {
         let db = self.connection()?;
-        get_attachment(&db, id, false)?;
-        db.execute("UPDATE attachments SET deleted=1 WHERE id=?1", [id])
-            .map_err(err)?;
+        let mut attachment = get_attachment(&db, id, false)?;
+        attachment.revision = Some(Uuid::new_v4().to_string());
+        db.execute(
+            "UPDATE attachments SET deleted=1, body=?1 WHERE id=?2",
+            params![serde_json::to_string(&attachment).map_err(err)?, id],
+        )
+        .map_err(err)?;
         Ok(())
     }
 
     pub fn restore_attachment(&self, id: &str) -> Result<Attachment> {
         let db = self.connection()?;
-        let attachment = get_attachment(&db, id, true)?;
+        let mut attachment = get_attachment(&db, id, true)?;
         require_record(&db, &attachment.record_id)?;
         self.resolve_existing(&attachment.relative_path)?;
-        db.execute("UPDATE attachments SET deleted=0 WHERE id=?1", [id])
-            .map_err(err)?;
+        attachment.revision = Some(Uuid::new_v4().to_string());
+        db.execute(
+            "UPDATE attachments SET deleted=0, body=?1 WHERE id=?2",
+            params![serde_json::to_string(&attachment).map_err(err)?, id],
+        )
+        .map_err(err)?;
         self.public_attachment(attachment)
     }
 
@@ -364,7 +380,8 @@ impl Store {
         self.resolve_existing(&attachment.relative_path)
     }
 
-    fn public_attachment(&self, metadata: StoredAttachment) -> Result<Attachment> {
+    fn public_attachment(&self, mut metadata: StoredAttachment) -> Result<Attachment> {
+        metadata.revision = Some(agent::attachment_revision(&metadata)?);
         let path = self.safe_destination(&metadata.relative_path)?;
         Ok(Attachment {
             metadata,
@@ -437,7 +454,14 @@ impl Store {
             schema_version: 1,
             created_at: now(),
             records: read_records(&db)?,
-            attachments: read_attachments(&db)?,
+            attachments: read_attachments(&db)?
+                .into_iter()
+                .map(|mut attachment| {
+                    // Concurrency revisions describe a live vault, not portable backup contents.
+                    attachment.revision = None;
+                    attachment
+                })
+                .collect(),
         };
         let manifest_bytes = serde_json::to_vec_pretty(&manifest).map_err(err)?;
         if manifest_bytes.len() as u64 > MAX_MANIFEST_SIZE {
@@ -673,12 +697,14 @@ impl Store {
                 return Err("Unexpected trailing attachment data.".into());
             }
             output.sync_all().map_err(err)?;
+            let mut restored = attachment.clone();
+            restored.revision = Some(Uuid::new_v4().to_string());
             tx.execute(
                 "INSERT INTO attachments(id,record_id,body) VALUES(?1,?2,?3)",
                 params![
                     attachment.id,
                     attachment.record_id,
-                    serde_json::to_string(attachment).map_err(err)?
+                    serde_json::to_string(&restored).map_err(err)?
                 ],
             )
             .map_err(err)?;

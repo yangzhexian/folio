@@ -1,4 +1,4 @@
 interface:
   display_name: "Folio Data Entry"
-  short_description: "Enter local Folio records through the backend CLI"
-  default_prompt: "Use $folio-data-entry to add the provided information and files to my local Folio library."
+  short_description: "Add, edit, or remove local Folio fields and attachments"
+  default_prompt: "Use $folio-data-entry to maintain the requested information and files in my local Folio library."

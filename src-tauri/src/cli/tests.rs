@@ -25,7 +25,7 @@ fn validation_info_schema_and_missing_reads_do_not_initialize_a_vault() {
     );
     assert_eq!(
         run(&root, &["schema"], &Value::Null).unwrap()["data"]["schemaVersion"],
-        1
+        2
     );
     assert_eq!(
         run(&root, &["validate", "--input", "-"], &input()).unwrap()["data"]["valid"],
@@ -304,4 +304,279 @@ fn operation_lock_survives_vault_directory_replacement() {
     ));
     drop(first);
     assert!(other.try_lock().is_ok());
+}
+
+#[test]
+fn targeted_field_commands_preserve_order_unrelated_values_and_check_revisions() {
+    let temp = TempDir::new().unwrap();
+    let root = temp.path().join("data");
+    let mut value = input();
+    value["notes"] = "Keep notes".into();
+    value["tags"] = json!(["Keep tag"]);
+    value["fields"].as_array_mut().unwrap().extend([
+        json!({"id":"phone","label":"Phone","labelZh":"电话","value":"0000","kind":"phone","sensitive":false}),
+        json!({"id":"other","label":"Other","value":"Keep value","kind":"text","sensitive":false}),
+    ]);
+    let created =
+        run(&root, &["create", "--input", "-"], &value).unwrap()["data"]["record"].clone();
+    let id = created["id"].as_str().unwrap();
+    let old = created["updatedAt"].as_str().unwrap();
+    let changed = run(
+        &root,
+        &[
+            "field-update",
+            "--record-id",
+            id,
+            "--field-id",
+            "phone",
+            "--expected-updated-at",
+            old,
+            "--input",
+            "-",
+        ],
+        &json!({"value":"1111","sensitive":true,"labelZh":null}),
+    )
+    .unwrap()["data"]["record"]
+        .clone();
+    assert_eq!(changed["fields"][0], created["fields"][0]);
+    assert_eq!(changed["fields"][2], created["fields"][2]);
+    assert_eq!(changed["fields"][1]["id"], "phone");
+    assert_eq!(changed["fields"][1]["label"], "Phone");
+    assert_eq!(changed["fields"][1]["value"], "1111");
+    assert_eq!(changed["fields"][1]["sensitive"], true);
+    assert!(changed["fields"][1].get("labelZh").is_none());
+    for property in [
+        "id",
+        "category",
+        "title",
+        "subtitle",
+        "tags",
+        "favorite",
+        "notes",
+        "createdAt",
+    ] {
+        assert_eq!(changed[property], created[property]);
+    }
+    assert_ne!(changed["updatedAt"], created["updatedAt"]);
+    assert_eq!(
+        run(
+            &root,
+            &[
+                "field-delete",
+                "--record-id",
+                id,
+                "--field-id",
+                "phone",
+                "--expected-updated-at",
+                old
+            ],
+            &Value::Null
+        )
+        .unwrap_err()
+        .code,
+        "RECORD_CONFLICT"
+    );
+    let deleted = run(
+        &root,
+        &[
+            "field-delete",
+            "--record-id",
+            id,
+            "--field-id",
+            "phone",
+            "--expected-updated-at",
+            changed["updatedAt"].as_str().unwrap(),
+        ],
+        &Value::Null,
+    )
+    .unwrap()["data"]["record"]
+        .clone();
+    assert_eq!(
+        deleted["fields"],
+        json!([created["fields"][0], created["fields"][2]])
+    );
+    assert_ne!(deleted["updatedAt"], changed["updatedAt"]);
+    assert_eq!(
+        run(
+            &root,
+            &[
+                "field-delete",
+                "--record-id",
+                id,
+                "--field-id",
+                "phone",
+                "--expected-updated-at",
+                deleted["updatedAt"].as_str().unwrap()
+            ],
+            &Value::Null
+        )
+        .unwrap_err()
+        .code,
+        "FIELD_NOT_FOUND"
+    );
+}
+
+#[test]
+fn invalid_field_patches_fail_without_initializing_storage() {
+    let temp = TempDir::new().unwrap();
+    let root = temp.path().join("absent");
+    for patch in [
+        json!({}),
+        json!({"id":"changed"}),
+        json!({"value":null}),
+        json!({"kind":"unknown"}),
+        json!({"label":" "}),
+        json!({"sensitive":"true"}),
+        json!([]),
+    ] {
+        assert_eq!(
+            run(
+                &root,
+                &[
+                    "field-update",
+                    "--record-id",
+                    input()["id"].as_str().unwrap(),
+                    "--field-id",
+                    "name",
+                    "--expected-updated-at",
+                    "2026-11-04T00:00:00.000Z",
+                    "--input",
+                    "-"
+                ],
+                &patch
+            )
+            .unwrap_err()
+            .code,
+            "INVALID_FIELD_PATCH"
+        );
+    }
+    assert!(!root.exists());
+}
+
+#[test]
+fn attachment_commands_validate_names_conflicts_and_deletion_results() {
+    let temp = TempDir::new().unwrap();
+    let root = temp.path().join("data");
+    run(&root, &["create", "--input", "-"], &input()).unwrap();
+    let record_id = input()["id"].as_str().unwrap().to_owned();
+    let source = temp.path().join("source.txt");
+    fs::write(&source, "Synthetic original").unwrap();
+    let attached = run(
+        &root,
+        &["attach", "--record-id", &record_id, "--input", "-"],
+        &json!([source]),
+    )
+    .unwrap()["data"]["attachments"][0]
+        .clone();
+    let id = attached["id"].as_str().unwrap();
+    let revision = attached["revision"].as_str().unwrap();
+    assert_eq!(
+        run(
+            &root,
+            &[
+                "attachment-rename",
+                "--record-id",
+                &record_id,
+                "--attachment-id",
+                id,
+                "--expected-revision",
+                revision,
+                "--input",
+                "-"
+            ],
+            &json!({"name":"../outside"})
+        )
+        .unwrap_err()
+        .code,
+        "INVALID_ARGUMENT"
+    );
+    let renamed = run(
+        &root,
+        &[
+            "attachment-rename",
+            "--record-id",
+            &record_id,
+            "--attachment-id",
+            id,
+            "--expected-revision",
+            revision,
+            "--input",
+            "-",
+        ],
+        &json!({"name":"Résumé 2026"}),
+    )
+    .unwrap()["data"]["attachment"]
+        .clone();
+    assert_eq!(renamed["fileName"], "identity_Résumé-2026.txt");
+    assert_eq!(renamed["id"], attached["id"]);
+    assert_ne!(renamed["revision"], attached["revision"]);
+    assert_eq!(
+        run(
+            &root,
+            &[
+                "attachment-delete",
+                "--record-id",
+                &record_id,
+                "--attachment-id",
+                id,
+                "--expected-revision",
+                revision
+            ],
+            &Value::Null
+        )
+        .unwrap_err()
+        .code,
+        "ATTACHMENT_CONFLICT"
+    );
+    let replacement = temp.path().join("new.txt");
+    fs::write(&replacement, "Synthetic replacement").unwrap();
+    let reply = run(
+        &root,
+        &[
+            "attachment-replace",
+            "--record-id",
+            &record_id,
+            "--attachment-id",
+            id,
+            "--expected-revision",
+            renamed["revision"].as_str().unwrap(),
+            "--input",
+            "-",
+        ],
+        &json!({"path":replacement}),
+    )
+    .unwrap();
+    assert_eq!(reply["data"]["previousPath"], renamed["absolutePath"]);
+    let replaced = &reply["data"]["attachment"];
+    assert_eq!(
+        fs::read_to_string(replaced["absolutePath"].as_str().unwrap()).unwrap(),
+        "Synthetic replacement"
+    );
+    let deleted = run(
+        &root,
+        &[
+            "attachment-delete",
+            "--record-id",
+            &record_id,
+            "--attachment-id",
+            id,
+            "--expected-revision",
+            replaced["revision"].as_str().unwrap(),
+        ],
+        &Value::Null,
+    )
+    .unwrap();
+    assert_eq!(deleted["data"]["deleted"], true);
+    assert_eq!(deleted["data"]["attachmentId"], id);
+    assert!(
+        run(&root, &["get", "--id", &record_id], &Value::Null).unwrap()["data"]["attachments"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(fs::read_to_string(source).unwrap(), "Synthetic original");
+    assert_eq!(
+        fs::read_to_string(replacement).unwrap(),
+        "Synthetic replacement"
+    );
 }

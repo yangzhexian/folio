@@ -75,7 +75,8 @@ try {
   await page.route(`${origin}/`, async route => {
     const response = await route.fetch(); const html = await response.text();
     const bootstrap = `import { mockIPC, mockWindows } from '/node_modules/@tauri-apps/api/mocks.js'; globalThis.isTauri = true; mockWindows('main'); const snapshot = ${JSON.stringify(snapshot)}; const fixtures = ${JSON.stringify({ card: png.toString('base64'), certificate: pdf.toString('base64') })}; globalThis.__captureSnapshot = snapshot; mockIPC(async (command, args) => {
-      if (command === 'load_snapshot') return structuredClone(snapshot);
+      if (command === 'open_preview_window') return false;
+        if (command === 'load_snapshot') return structuredClone(snapshot);
       if (command === 'save_record') { const saved = {...args.record, updatedAt: '${timestamp}'}; snapshot.records = snapshot.records.map(record => record.id === saved.id ? saved : record); return structuredClone(saved); }
       if (command === 'read_attachment_preview') return Uint8Array.from(atob(fixtures[args.id]), c => c.charCodeAt(0)).buffer;
       if (command === 'rename_attachment') { const file = snapshot.attachments.find(file => file.id === args.id); file.fileName = 'identity_' + args.name + '.pdf'; file.relativePath = 'attachments/' + file.recordId + '/' + file.fileName; file.absolutePath = 'C:/Folio/data/' + file.relativePath; return structuredClone(file); }

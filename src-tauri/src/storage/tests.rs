@@ -408,6 +408,7 @@ fn mismatched_backup_attachment_and_duplicate_records_are_rejected() {
         relative_path: relative.clone(),
         size: 100,
         created_at: now(),
+        revision: None,
     };
     let manifest = BackupManifest {
         schema_version: 1,

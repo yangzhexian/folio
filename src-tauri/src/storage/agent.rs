@@ -1,5 +1,21 @@
 use super::*;
 
+mod edits;
+
+pub(super) fn attachment_revision(attachment: &StoredAttachment) -> Result<String> {
+    if let Some(revision) = &attachment.revision {
+        return Ok(revision.clone());
+    }
+    // FNV-1a-128 over the canonical legacy metadata JSON. This is an optimistic
+    // concurrency token, not an authentication or content-integrity guarantee.
+    let mut hash = 0x6c62272e07bb014262b821756295c58du128;
+    for byte in serde_json::to_vec(attachment).map_err(err)? {
+        hash ^= u128::from(byte);
+        hash = hash.wrapping_mul(0x0000000001000000000000000000013bu128);
+    }
+    Ok(format!("legacy-{hash:032x}"))
+}
+
 impl Store {
     pub fn agent_existing(root: PathBuf) -> Result<Self> {
         if !root.join("vault/folio.sqlite3").is_file() {
