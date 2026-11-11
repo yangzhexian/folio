@@ -14,10 +14,12 @@ const MAX_MANIFEST_SIZE: u64 = 32 * 1024 * 1024;
 const MAX_BACKUP_ENTRIES: usize = 100_001;
 
 mod agent;
+mod categories;
 mod migration;
 mod preview;
 mod preview_window;
 use agent::next_revision;
+use categories::{read_category_catalog, require_registered_category, write_category_catalog};
 
 /// Coordinate complete application/CLI operations, including vault replacement.
 /// The guard lives outside `vault`, so restore cannot move it out of the lock scope.
@@ -95,6 +97,7 @@ impl Store {
              PRAGMA synchronous = FULL;
              CREATE TABLE IF NOT EXISTS records (id TEXT PRIMARY KEY, body TEXT NOT NULL, deleted INTEGER NOT NULL DEFAULT 0);
              CREATE TABLE IF NOT EXISTS attachments (id TEXT PRIMARY KEY, record_id TEXT NOT NULL REFERENCES records(id), body TEXT NOT NULL, deleted INTEGER NOT NULL DEFAULT 0);
+             CREATE TABLE IF NOT EXISTS category_catalog (id INTEGER PRIMARY KEY CHECK(id=1), body TEXT NOT NULL);
              CREATE INDEX IF NOT EXISTS attachment_record ON attachments(record_id);"
         ).map_err(err)?;
         Ok(db)
@@ -103,6 +106,10 @@ impl Store {
     pub fn snapshot(&self) -> Result<Snapshot> {
         let db = self.connection()?;
         let records = read_records(&db)?;
+        let catalog = read_category_catalog(&db)?;
+        for record in &records {
+            require_category(&catalog.categories, &record.category)?;
+        }
         let stored = read_attachments(&db)?;
         let attachments = stored
             .into_iter()
@@ -112,6 +119,8 @@ impl Store {
             records,
             attachments,
             data_dir: display_path(&self.root),
+            categories: catalog.categories,
+            categories_revision: catalog.revision,
         })
     }
 
@@ -121,6 +130,7 @@ impl Store {
         let tx = db
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .map_err(err)?;
+        require_registered_category(&tx, &record.category)?;
         let previous: Option<(String, i64)> = tx
             .query_row(
                 "SELECT body, deleted FROM records WHERE id=?1",
@@ -450,10 +460,18 @@ impl Store {
 
     fn write_backup(&self, path: &Path) -> Result<()> {
         let db = self.connection()?;
+        let catalog = read_category_catalog(&db)?;
+        let customized = catalog.categories != builtin_categories();
+        let records = read_records(&db)?;
+        for record in &records {
+            validate_record(record)?;
+            require_category(&catalog.categories, &record.category)?;
+        }
         let manifest = BackupManifest {
-            schema_version: 1,
+            schema_version: if customized { 2 } else { 1 },
             created_at: now(),
-            records: read_records(&db)?,
+            records,
+            categories: customized.then_some(catalog.categories),
             attachments: read_attachments(&db)?
                 .into_iter()
                 .map(|mut attachment| {
@@ -629,13 +647,17 @@ impl Store {
             }
             serde_json::from_slice(&bytes).map_err(err)?
         };
-        if manifest.schema_version != 1 {
-            return Err("Unsupported backup schema version.".into());
-        }
+        let categories = match (manifest.schema_version, &manifest.categories) {
+            (1, None) => builtin_categories(),
+            (2, Some(categories)) => normalize_categories(categories.clone())?,
+            (1 | 2, _) => return Err("Invalid category catalog in backup.".into()),
+            _ => return Err("Unsupported backup schema version.".into()),
+        };
         validate_date(&manifest.created_at)?;
         let mut record_ids = HashSet::new();
         for record in &manifest.records {
             validate_record(record)?;
+            require_category(&categories, &record.category)?;
             if !record_ids.insert(record.id.clone()) {
                 return Err("Backup contains duplicate records.".into());
             }
@@ -670,6 +692,13 @@ impl Store {
         }
         let mut db = Self::connection_at(staging)?;
         let tx = db.transaction().map_err(err)?;
+        write_category_catalog(
+            &tx,
+            &CategoryCatalog {
+                categories,
+                revision: Uuid::new_v4().to_string(),
+            },
+        )?;
         for record in &manifest.records {
             tx.execute(
                 "INSERT INTO records(id,body) VALUES(?1,?2)",

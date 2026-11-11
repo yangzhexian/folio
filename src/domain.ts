@@ -1,5 +1,5 @@
-import { categoryLabels } from './templates';
-import type { Attachment, Category, Field, Locale, ProfileRecord } from './types';
+import { categoryDefinition, defaultCategories } from './categories';
+import type { Attachment, Category, CategoryDefinition, Field, Locale, ProfileRecord } from './types';
 
 function normalizeSearch(value: string): string {
   return value.normalize('NFKC').toLowerCase();
@@ -61,11 +61,11 @@ function fieldSearchIndex(field: Field): SearchIndex {
   };
 }
 
-function recordSearchIndex(record: ProfileRecord): SearchIndex {
-  const labels = categoryLabels[record.category];
+function recordSearchIndex(record: ProfileRecord, catalog: CategoryDefinition[]): SearchIndex {
+  const labels = categoryDefinition(catalog, record.category);
   const fields = record.fields.map(fieldSearchIndex);
   return {
-    text: normalizeSearch([record.title, record.subtitle, record.notes, record.category, labels.en, labels.zh, ...record.tags, ...fields.map(field => field.text)].join('\n')),
+    text: normalizeSearch([record.title, record.subtitle, record.notes, record.category, labels.nameEn, labels.nameZh, ...record.tags, ...fields.map(field => field.text)].join('\n')),
     concepts: new Set(fields.flatMap(field => [...field.concepts])),
   };
 }
@@ -78,7 +78,7 @@ function matchesTerms(index: SearchIndex, terms: SearchTerm[]): boolean {
   return terms.every(term => matchesTerm(index, term));
 }
 
-export function filterRecords(records: ProfileRecord[], attachments: Attachment[], query: string, category: 'all' | 'favorites' | Category): ProfileRecord[] {
+export function filterRecords(records: ProfileRecord[], attachments: Attachment[], query: string, category: 'all' | 'favorites' | Category, catalog: CategoryDefinition[] = defaultCategories): ProfileRecord[] {
   const terms = searchTerms(query);
   const attachmentNames = new Map<string, string[]>();
   for (const attachment of attachments) {
@@ -90,15 +90,15 @@ export function filterRecords(records: ProfileRecord[], attachments: Attachment[
     if (category === 'favorites' && !record.favorite) return false;
     if (category !== 'all' && category !== 'favorites' && record.category !== category) return false;
     if (terms.length === 0) return true;
-    const index = recordSearchIndex(record);
+    const index = recordSearchIndex(record, catalog);
     index.text += '\n' + normalizeSearch((attachmentNames.get(record.id) ?? []).join('\n'));
     return matchesTerms(index, terms);
   });
 }
 
-export function filterAttachments(records: ProfileRecord[], attachments: Attachment[], query: string): Attachment[] {
+export function filterAttachments(records: ProfileRecord[], attachments: Attachment[], query: string, catalog: CategoryDefinition[] = defaultCategories): Attachment[] {
   const terms = searchTerms(query);
-  const parents = new Map(records.map(record => [record.id, recordSearchIndex(record)]));
+  const parents = new Map(records.map(record => [record.id, recordSearchIndex(record, catalog)]));
   return attachments.filter(file => {
     const parent = parents.get(file.recordId);
     if (parent === undefined) return false;
@@ -106,9 +106,9 @@ export function filterAttachments(records: ProfileRecord[], attachments: Attachm
   });
 }
 
-export function findMatchingFields(record: ProfileRecord, query: string): Field[] {
+export function findMatchingFields(record: ProfileRecord, query: string, catalog: CategoryDefinition[] = defaultCategories): Field[] {
   const terms = searchTerms(query);
-  if (terms.length === 0 || !matchesTerms(recordSearchIndex(record), terms)) return [];
+  if (terms.length === 0 || !matchesTerms(recordSearchIndex(record, catalog), terms)) return [];
   // Parent metadata and other fields can supply context, but each hit must match its own content.
   return record.fields.filter(field => {
     const index = fieldSearchIndex(field);

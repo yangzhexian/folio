@@ -360,6 +360,7 @@ fn invalid_archives_never_replace_live_data() {
     let invalid = temp.path().join("bad.zip");
     let valid_manifest = serde_json::to_vec(&BackupManifest {
         schema_version: 1,
+        categories: None,
         created_at: now(),
         records: vec![],
         attachments: vec![],
@@ -373,6 +374,7 @@ fn invalid_archives_never_replace_live_data() {
     assert!(!temp.path().join("escape").exists());
     let invalid_manifest = serde_json::to_vec(&BackupManifest {
         schema_version: 999,
+        categories: None,
         created_at: now(),
         records: vec![],
         attachments: vec![],
@@ -392,6 +394,7 @@ fn mismatched_backup_attachment_and_duplicate_records_are_rejected() {
     let path = temp.path().join("bad.zip");
     let duplicate = BackupManifest {
         schema_version: 1,
+        categories: None,
         created_at: now(),
         records: vec![record.clone(), record.clone()],
         attachments: vec![],
@@ -412,6 +415,7 @@ fn mismatched_backup_attachment_and_duplicate_records_are_rejected() {
     };
     let manifest = BackupManifest {
         schema_version: 1,
+        categories: None,
         created_at: now(),
         records: vec![record],
         attachments: vec![attachment],

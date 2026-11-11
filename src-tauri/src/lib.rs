@@ -3,7 +3,7 @@ mod model;
 mod preview_window;
 mod storage;
 
-use model::{Attachment, ProfileRecord, Result, Snapshot};
+use model::{Attachment, CategoryCatalog, CategoryDefinition, ProfileRecord, Result, Snapshot};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use storage::{display_path, Store};
@@ -48,6 +48,22 @@ fn localized(locale: &Option<String>, en: &str, zh: &str) -> String {
 #[tauri::command]
 async fn load_snapshot(app: tauri::AppHandle) -> Result<Snapshot> {
     with_blocking_store(app, Store::snapshot).await
+}
+
+#[tauri::command]
+async fn save_categories(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    categories: Vec<CategoryDefinition>,
+    expected_revision: String,
+) -> Result<CategoryCatalog> {
+    if window.label() != "main" {
+        return Err("INVALID_CATEGORIES".into());
+    }
+    with_blocking_store(app, move |store| {
+        store.save_categories(categories, &expected_revision)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -286,6 +302,7 @@ pub fn run() {
             preview_window::load_preview_session,
             preview_window::set_preview_pinned,
             load_snapshot,
+            save_categories,
             save_record,
             delete_record,
             import_attachments,

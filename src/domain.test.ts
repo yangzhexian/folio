@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fieldLabel, filterAttachments, filterRecords, findMatchingFields, formatBytes, formatRecord } from './domain';
 import { createRecord, templates } from './templates';
+import { defaultCategories } from './categories';
 import type { Attachment, Field, ProfileRecord } from './types';
 
 const field = (overrides: Partial<Field> = {}): Field => ({ id: 'field-1', label: 'Institution', labelZh: '学校', value: 'Example University', kind: 'text', sensitive: false, ...overrides });
@@ -13,6 +14,27 @@ const attachment: Attachment = {
 };
 
 describe('record search', () => {
+  it('uses renamed bilingual collection labels across records, field matches, and file search', () => {
+    const catalog = defaultCategories.map(category => category.id === 'education' ? { ...category, nameEn: 'Learning archive', nameZh: '学习档案' } : category);
+    const item = record();
+    expect(filterRecords([item], [], '学习档案 university', 'all', catalog)).toEqual([item]);
+    expect(filterRecords([item], [], 'learning archive', 'education', catalog)).toEqual([item]);
+    expect(findMatchingFields(item, '学习档案 university', catalog)).toEqual(item.fields);
+    expect(filterAttachments([item], [attachment], 'learning 原始成绩单', catalog)).toEqual([attachment]);
+    expect(filterRecords([item], [], '教育经历', 'all', catalog)).toEqual([]);
+  });
+
+  it('finds new collections by stable ID and both labels without assuming a built-in category', () => {
+    const collection = { id: 'collection-00000000-0000-4000-8000-000000000099' as const, nameEn: 'Travel', nameZh: '旅行', icon: 'plane' };
+    const catalog = [...defaultCategories, collection];
+    const item = record({ category: collection.id });
+    expect(filterRecords([item], [], 'travel', collection.id, catalog)).toEqual([item]);
+    expect(filterRecords([item], [], '旅行', 'all', catalog)).toEqual([item]);
+    expect(filterAttachments([item], [attachment], '旅行', catalog)).toEqual([attachment]);
+    expect(findMatchingFields(item, 'travel university', catalog)).toEqual(item.fields);
+    expect(filterRecords([item], [], 'travel', 'education', catalog)).toEqual([]);
+    expect(() => filterRecords([item], [], 'university', 'all')).not.toThrow();
+  });
   it('requires every token while matching across bilingual labels, values, tags and notes', () => {
     const records = [record(), record({ id: 'record-2', title: 'Other record', fields: [], tags: [], notes: '' })];
     expect(filterRecords(records, [], '学校 EXAMPLE academic summer', 'all').map((item) => item.id)).toEqual(['record-1']);

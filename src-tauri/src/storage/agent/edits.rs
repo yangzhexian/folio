@@ -97,6 +97,7 @@ impl Store {
             record.fields.remove(index);
         }
         validate_record(&record)?;
+        require_registered_category(&tx, &record.category)?;
         record.updated_at = next_revision(&record.updated_at)?;
         tx.execute(
             "UPDATE records SET body=?1 WHERE id=?2 AND deleted=0",

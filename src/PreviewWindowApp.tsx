@@ -8,8 +8,8 @@ import { loadPreviewSession, previewSessionEvent, setPreviewPinned, type Preview
 import type { Locale } from './types';
 
 const copy = {
-  en: { title: 'Attachment preview', loading: 'Loading preview…', unavailable: 'This attachment is no longer available.', close: 'Close', retry: 'Try again', copied: 'Copied', actionError: 'The action could not be completed. Try again.' },
-  zh: { title: '附件预览', loading: '正在加载预览…', unavailable: '此附件已不可用。', close: '关闭', retry: '重试', copied: '已复制', actionError: '操作未完成，请重试。' },
+  en: { title: 'Attachment preview', loading: 'Loading preview…', unavailable: 'This attachment is no longer available.', retry: 'Try again', copied: 'Copied', actionError: 'The action could not be completed. Try again.' },
+  zh: { title: '附件预览', loading: '正在加载预览…', unavailable: '此附件已不可用。', retry: '重试', copied: '已复制', actionError: '操作未完成，请重试。' },
 };
 
 function readPreferences() {
@@ -136,7 +136,6 @@ export default function PreviewWindowApp() {
       onReveal={attachment => { void run(() => api.reveal(attachment.id)); }}/>
       : <div className="preview-window-empty"><p role={loading ? 'status' : 'alert'}>{loading ? text.loading : text.unavailable}</p><div>
         {!loading && <button className="button" type="button" onClick={() => refreshRef.current()}>{text.retry}</button>}
-        <button className="button" type="button" onClick={close}>{text.close}</button>
       </div></div>}
     {toast && <div className="toast preview-window-toast" role="status">{toast}</div>}
   </div>;

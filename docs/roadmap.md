@@ -1,10 +1,12 @@
 # Folio roadmap
 
-This roadmap tracks the delivered 0.4.2 visibility controls, independent preview windows, and expanded agent-entry workflow, the 0.4.0 preview foundation, and proposed follow-up work. The remaining items are planned, not released, and their order reflects user value and implementation dependencies rather than promised dates. Folio should remain a small, bilingual desktop library whose records, attachments, indexes, and backups stay on the user's computer.
+This roadmap tracks the delivered 0.4.3 collection customization, 0.4.2 visibility controls and independent preview windows, the local agent-entry workflow, and proposed follow-up work. The remaining items are planned, not released, and their order reflects user value and implementation dependencies rather than promised dates. Folio should remain a small, bilingual desktop library whose records, attachments, indexes, and backups stay on the user's computer.
 
 ## Current foundation
 
 Folio supports structured records, bilingual field search, direct value copying, positional field insertion, pointer and keyboard field ordering, local attachment import, managed filenames, built-in PNG/JPG/JPEG and PDF preview, light and dark themes, and manual ZIP backup and restore. Data is stored beside the executable in `data`. Deleted items are retained on disk with a short Undo action, but there is no persistent trash interface. Records, attachments, and backups are not encrypted.
+
+Version 0.4.3 adds locally persisted collection definitions: English and Chinese names, 24 selectable icons, new collections, and pointer/keyboard ordering. Navigation, search, editor choices, CLI discovery, and backups use the same catalog. Stable IDs preserve record relationships and attachment filenames, and revision checks protect conflicting saves. The native preview now uses the operating system's title-bar close control without a duplicate button inside the viewer. Collection removal, merging, and nested collections remain outside the current implementation.
 
 ## Delivered: local agent data entry
 

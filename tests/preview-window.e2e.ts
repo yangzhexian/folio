@@ -10,7 +10,7 @@ const files = [
 const record = { id: recordId, category: 'documents', title: 'Window examples', subtitle: '', tags: [], favorite: false, fields: [], notes: '', createdAt: timestamp, updatedAt: timestamp };
 const fixtureBytes = Object.fromEntries(['landscape.png', 'two-pages.pdf'].map(name => [name, readFileSync(`tests/fixtures/${name}`).toString('base64')]));
 
-async function boot(page: Page, child = true) {
+async function boot(page: Page, child = true, options: { blockReads?: boolean; previewError?: string } = {}) {
   const errors: string[] = [];
   const remote: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -24,7 +24,7 @@ async function boot(page: Page, child = true) {
       mockWindows(${JSON.stringify(child ? 'attachment-preview' : 'main')});
       const bytes=${JSON.stringify(fixtureBytes)};
       const files=${JSON.stringify(files)};
-      const state=globalThis.__previewWindowTest={calls:[],session:{revision:1,id:files[0].id,files,pinned:false},bytes,activeUrls:[],blockReads:false,pendingReads:[]};
+      const state=globalThis.__previewWindowTest={calls:[],session:{revision:1,id:files[0].id,files,pinned:false},bytes,activeUrls:[],blockReads:${Boolean(options.blockReads)},pendingReads:[],previewError:${JSON.stringify(options.previewError ?? '')}};
       const create=URL.createObjectURL.bind(URL),revoke=URL.revokeObjectURL.bind(URL);
       URL.createObjectURL=value=>{const url=create(value);state.activeUrls.push(url);return url;};
       URL.revokeObjectURL=url=>{state.activeUrls=state.activeUrls.filter(item=>item!==url);revoke(url);};
@@ -39,6 +39,7 @@ async function boot(page: Page, child = true) {
         }
         if(command==='set_preview_pinned'){state.session.pinned=args.pinned;return args.pinned;}
         if(command==='read_attachment_preview'){
+          if(state.previewError)throw state.previewError;
           const file=state.session.files.find(file=>file.id===args.id);
           if(!file)throw 'PREVIEW_UNAVAILABLE';
           return Uint8Array.from(atob(state.bytes[file.fixture]),char=>char.charCodeAt(0)).buffer;
@@ -78,11 +79,14 @@ test('standalone viewer loads scoped metadata, pins, resizes, flips PDF pages, a
   const observed = await boot(page);
   const viewer = page.getByRole('region', { name: 'Attachment preview', exact: true });
   await expect(viewer.locator('.preview-image')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Close', exact: true })).toHaveCount(0);
+  await expect(viewer.locator('.tool-divider')).toHaveCount(0);
   await viewer.getByRole('button', { name: 'Keep on top', exact: true }).click();
   await expect(viewer.getByRole('button', { name: 'Stop keeping on top', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await viewer.getByRole('button', { name: 'Next attachment', exact: true }).click();
   const canvas = viewer.locator('.preview-pdf-canvas');
   await expect(canvas).toHaveAttribute('data-rendered-page', '1');
+  await expect(page.getByRole('button', { name: 'Close', exact: true })).toHaveCount(0);
   await viewer.getByRole('button', { name: 'Next page', exact: true }).click();
   await expect(canvas).toHaveAttribute('data-rendered-page', '2');
   await viewer.getByRole('button', { name: 'Zoom in', exact: true }).click();
@@ -92,7 +96,7 @@ test('standalone viewer loads scoped metadata, pins, resizes, flips PDF pages, a
   await expect(canvas).toHaveAttribute('data-rendered-page', '2');
   await viewer.getByRole('button', { name: 'Stop keeping on top', exact: true }).click();
   await expect(viewer.getByRole('button', { name: 'Keep on top', exact: true })).toHaveAttribute('aria-pressed', 'false');
-  await viewer.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.keyboard.press('Escape');
   const calls = await page.evaluate(() => (window as any).__previewWindowTest.calls);
   expect(calls.filter((call: any) => call.command === 'set_preview_pinned').map((call: any) => call.args)).toEqual([{ pinned: true }, { pinned: false }]);
   expect(calls.some((call: any) => call.command === 'plugin:window|close')).toBe(true);
@@ -137,6 +141,7 @@ test('replacement revision reloads the same attachment and deleted scope release
   await page.evaluate(() => { (window as any).__previewWindowTest.session.files = []; });
   await signal(page);
   await expect(page.getByRole('alert')).toHaveText('This attachment is no longer available.');
+  await expect(page.getByRole('button', { name: 'Close', exact: true })).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => (window as any).__previewWindowTest.activeUrls.length)).toBe(0);
   expect(observed.errors).toEqual([]);
 });
@@ -156,8 +161,26 @@ test('standalone preferences follow shared storage in Chinese and dark mode', as
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('html')).toHaveAttribute('data-accent', 'violet');
   await expect(viewer.getByRole('button', { name: '窗口置顶', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '关闭', exact: true })).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => (window as any).__previewWindowTest.calls.some((call: any) => call.command === 'plugin:window|close'))).toBe(true);
+  expect(observed.errors).toEqual([]);
+  expect(observed.remote).toEqual([]);
+});
+
+test('native loading and failed previews have no internal close button', async ({ page }) => {
+  const observed = await boot(page, true, { blockReads: true, previewError: 'PREVIEW_INVALID' });
+  await expect(page.getByRole('status')).toHaveText('Loading preview…');
+  await expect(page.getByRole('button', { name: 'Close', exact: true })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => (window as any).__previewWindowTest.pendingReads.length)).toBeGreaterThan(0);
+  await page.evaluate(() => {
+    const state = (window as any).__previewWindowTest;
+    state.blockReads = false;
+    for (const resolve of state.pendingReads.splice(0)) resolve();
+  });
+  await expect(page.getByRole('alert')).toHaveText('This file could not be previewed. You can open it externally.');
+  await expect(page.getByRole('button', { name: 'Close', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
   expect(observed.errors).toEqual([]);
   expect(observed.remote).toEqual([]);
 });

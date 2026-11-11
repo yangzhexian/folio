@@ -1,8 +1,8 @@
-import type { Category, Field, FieldKind, Locale, ProfileRecord } from './types';
+import type { BuiltInCategory, Category, Field, FieldKind, Locale, ProfileRecord } from './types';
 
-export const categories: Category[] = ['identity', 'education', 'experience', 'research', 'awards', 'skills', 'contacts', 'documents', 'custom'];
+export const categories: BuiltInCategory[] = ['identity', 'education', 'experience', 'research', 'awards', 'skills', 'contacts', 'documents', 'custom'];
 
-export const categoryLabels: Record<Category, { en: string; zh: string }> = {
+export const categoryLabels: Record<BuiltInCategory, { en: string; zh: string }> = {
   identity: { en: 'Identity', zh: '个人信息' },
   education: { en: 'Education', zh: '教育经历' },
   experience: { en: 'Experience', zh: '工作经历' },

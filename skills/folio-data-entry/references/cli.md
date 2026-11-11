@@ -8,21 +8,23 @@ The CLI is a local executable shipped beside Folio. It does not launch the deskt
 $folioCli = 'D:\Apps\Folio\folio-cli.exe'
 $folioData = 'D:\Apps\Folio\data'
 & $folioCli --data-dir $folioData info
-& $folioCli schema
+& $folioCli --data-dir $folioData schema
+& $folioCli --data-dir $folioData categories
 & $folioCli --data-dir $folioData list
 & $folioCli --data-dir $folioData validate --input 'D:\PrivateWork\record.json'
 & $folioCli --data-dir $folioData create --input 'D:\PrivateWork\record.json'
 & $folioCli --data-dir $folioData get --id '30a81577-b68d-449a-9d4a-0b1c5398b231'
 ```
 
-These paths and the UUID are illustrative. Resolve the actual executable and library, and generate a new UUID for each genuinely new record. Read-only commands and validation do not initialize an empty vault. Creation can initialize the explicitly chosen data directory.
+These paths and the UUID are illustrative. Resolve the actual executable and library, and generate a new UUID for each genuinely new record. Read-only commands and validation do not initialize an empty vault. On an empty path, `categories` and `schema` return the nine builtin definitions with revision `builtin-v1` without creating files. Creation can initialize the explicitly chosen data directory only after its category has been validated.
 
 On an explicitly selected new library, `info` reports `libraryExists: false`, and `list` or `get` returns `LIBRARY_NOT_FOUND` with exit code 1. This is expected before the first successful `create`. If the user intended an existing library, correct the path instead of creating an empty replacement.
 
 | Command | Effect |
 | --- | --- |
 | `info` | Report the resolved data directory and whether a library exists. |
-| `schema` | Describe accepted record and attachment inputs. |
+| `schema` | Describe accepted inputs, capabilities, and the selected library's current category IDs and definitions. |
+| `categories` | Read the ordered category definitions and their catalog revision. |
 | `list` | List active record summaries. |
 | `get --id UUID` | Read an active record and its attachments. |
 | `validate --input FILE` | Validate a record payload without writing the library. |
@@ -35,7 +37,17 @@ On an explicitly selected new library, `info` reports `libraryExists: false`, an
 | `attachment-replace --record-id UUID --attachment-id UUID --expected-revision TOKEN --input FILE` | Replace an attachment's bytes while preserving its ID and record association. |
 | `attachment-delete --record-id UUID --attachment-id UUID --expected-revision TOKEN` | Soft-delete only that active attachment. |
 
-The installed CLI's `schema` returns `capabilities`; check for the intended command before using a version that may predate targeted edits. Schema version 2 adds field and attachment editing without changing the record input contract. Mutation results include `data.record` for field edits/deletion, `data.attachment` for attachment rename/replacement, and `data.deleted: true` plus the removed IDs for attachment deletion. Replacement also returns `data.previousPath`.
+The installed CLI's `schema` returns `capabilities`; check for the intended command before using a version that may predate targeted edits. Schema version 2 adds field and attachment editing. Schema version 3 adds `categories.read` and discovers category definitions and the record category enum from the selected library. Mutation results include `data.record` for field edits/deletion, `data.attachment` for attachment rename/replacement, and `data.deleted: true` plus the removed IDs for attachment deletion. Replacement also returns `data.previousPath`.
+
+## Category discovery
+
+`categories` returns `data.categories`, `data.revision`, and `data.dataDir`. Each ordered definition has `id`, `nameEn`, `nameZh`, and `icon`. `schema`, `list`, and `get` also return `data.categories` and `data.categoriesRevision`. Names and icons can be customized, and the catalog order controls the desktop's category display. Use the exact ID from the intended library; translating, renaming, or reordering a category does not change that ID or move its records and existing attachment files.
+
+The nine builtin IDs remain `identity`, `education`, `experience`, `research`, `awards`, `skills`, `contacts`, `documents`, and `custom`. Additional IDs use `collection-<canonical lowercase UUID>`. Do not generate a custom category ID in a record payload before the category exists: `validate`, `create`, and `update` require registry membership and return `UNKNOWN_CATEGORY` for an unregistered ID. Match the user's requested category using the current English and Chinese names; ask about a material ambiguity instead of silently selecting an unrelated builtin category.
+
+Category definitions are edited in Folio's category manager; the CLI does not expose catalog mutation. The catalog supports additions, edits, and reordering, with at most 100 categories; existing categories cannot be removed. Both names are trimmed, contain 1-60 Unicode characters without control characters, and must be unique within their locale after case-insensitive comparison. `schema.categoryIcons` provides the curated icon identifiers. The category catalog has its own opaque revision, independent of record timestamps and attachment tokens. A stale catalog save returns `CATEGORY_CONFLICT`, and invalid definitions return `INVALID_CATEGORIES`.
+
+Backups containing customized definitions or order use backup schema 2 and preserve the complete ordered catalog. Exact default catalogs continue to export backup schema 1 for compatibility. Folio accepts legacy schema 1 backups with the default nine categories and validates all record category references before replacing a vault. Restore assigns a fresh category catalog revision; category revisions are not exported. A backup restore replaces the catalog along with the vault and retains the previous vault for recovery.
 
 ## Record payload
 
@@ -75,7 +87,7 @@ $record = $reply.data.record
 # Pass $expectedRevision unchanged to update --expected-updated-at.
 ```
 
-Categories are `identity`, `education`, `experience`, `research`, `awards`, `skills`, `contacts`, `documents`, and `custom`. Field kinds are `text`, `multiline`, `date`, `email`, `phone`, and `url`. Record IDs use canonical lowercase UUIDs. Field IDs are unique, nonempty strings within their record; preserve existing IDs when changing values or order. Consult `schema` for current size and validation limits.
+Use a category ID discovered from this library's `categories` or `schema` output. Field kinds are `text`, `multiline`, `date`, `email`, `phone`, and `url`. Record IDs use canonical lowercase UUIDs. Field IDs are unique, nonempty strings within their record; preserve existing IDs when changing values or order. Consult `schema` for current size and validation limits.
 
 An attachment payload is a JSON array such as `["D:\\Documents\\example-certificate.pdf", "D:\\Pictures\\example-portrait.png"]`. Pass local regular files, not directories, URLs, network shares, or Windows alternate streams. The importer accepts at most 100 paths per command and 2 GiB per file, preserves the original source files, and rejects unsafe sources. It may copy a previously imported source again if explicitly invoked again.
 

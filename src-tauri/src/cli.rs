@@ -1,6 +1,7 @@
 //! Local automation entrypoint. No webview, HTTP listener, or remote service is started.
 use crate::model::{
-    now, validate_date, validate_id, validate_record, Field, ProfileRecord, CATEGORIES,
+    builtin_catalog, now, require_category, validate_date, validate_id, validate_record,
+    CategoryCatalog, Field, ProfileRecord, CATEGORY_ICONS,
 };
 use crate::storage::{display_path, operation_lock, Store};
 use serde::Deserialize;
@@ -12,7 +13,7 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 
 const MAX_INPUT_BYTES: u64 = 8 * 1024 * 1024;
-const HELP: &str = "Folio local data CLI\n\nUsage: folio-cli [--data-dir ABSOLUTE_DIRECTORY] COMMAND [OPTIONS]\n\nCommands:\n  info                                      Show the selected library path and existence\n  schema                                    Print input schemas, capabilities, and limits\n  list                                      List active record summaries\n  get --id UUID                             Read a record and its attachment revisions\n  validate --input FILE                     Validate record JSON without writing\n  create --input FILE                       Create one record; an existing ID is rejected\n  update --input FILE --expected-updated-at TIMESTAMP\n                                            Replace one active record if its revision matches\n  attach --record-id UUID --input FILE       Import a JSON array of absolute file paths\n  field-update --record-id UUID --field-id ID --expected-updated-at TIMESTAMP --input FILE\n                                            Patch one field without changing other fields\n  field-delete --record-id UUID --field-id ID --expected-updated-at TIMESTAMP\n                                            Delete one field, preserving remaining order\n  attachment-rename --record-id UUID --attachment-id UUID --expected-revision TOKEN --input FILE\n                                            Rename using JSON {\"name\":\"stem\"}\n  attachment-replace --record-id UUID --attachment-id UUID --expected-revision TOKEN --input FILE\n                                            Replace bytes using JSON {\"path\":\"absolute source path\"}\n  attachment-delete --record-id UUID --attachment-id UUID --expected-revision TOKEN\n                                            Soft-delete one active attachment\n\nUse --input - to read UTF-8 JSON from stdin. The default data directory is data\nbeside this executable. Use info before writing to an existing library. Commands\nreturn JSON; errors go to stderr. Exit codes: 0 success, 1 operation failed,\n2 invalid arguments/input, 3 revision or record conflict. No files are uploaded.\n";
+const HELP: &str = "Folio local data CLI\n\nUsage: folio-cli [--data-dir ABSOLUTE_DIRECTORY] COMMAND [OPTIONS]\n\nCommands:\n  info                                      Show the selected library path and existence\n  schema                                    Print current category IDs, input schemas, and limits\n  categories                                Read category names, icons, order, and revision\n  list                                      List active record summaries\n  get --id UUID                             Read a record and its attachment revisions\n  validate --input FILE                     Validate record JSON without writing\n  create --input FILE                       Create one record; an existing ID is rejected\n  update --input FILE --expected-updated-at TIMESTAMP\n                                            Replace one active record if its revision matches\n  attach --record-id UUID --input FILE       Import a JSON array of absolute file paths\n  field-update --record-id UUID --field-id ID --expected-updated-at TIMESTAMP --input FILE\n                                            Patch one field without changing other fields\n  field-delete --record-id UUID --field-id ID --expected-updated-at TIMESTAMP\n                                            Delete one field, preserving remaining order\n  attachment-rename --record-id UUID --attachment-id UUID --expected-revision TOKEN --input FILE\n                                            Rename using JSON {\"name\":\"stem\"}\n  attachment-replace --record-id UUID --attachment-id UUID --expected-revision TOKEN --input FILE\n                                            Replace bytes using JSON {\"path\":\"absolute source path\"}\n  attachment-delete --record-id UUID --attachment-id UUID --expected-revision TOKEN\n                                            Soft-delete one active attachment\n\nUse --input - to read UTF-8 JSON from stdin. The default data directory is data\nbeside this executable. Use info before writing to an existing library. Commands\nreturn JSON; errors go to stderr. Exit codes: 0 success, 1 operation failed,\n2 invalid arguments/input, 3 revision or record conflict. No files are uploaded.\n";
 
 #[derive(Debug)]
 struct CliError {
@@ -32,6 +33,9 @@ fn error(code: &'static str, message: impl Into<String>, exit: i32) -> CliError 
 
 fn storage_error(message: String) -> CliError {
     match message.as_str() {
+        "UNKNOWN_CATEGORY" => error("UNKNOWN_CATEGORY", "Use an exact registered category ID from categories or schema for this library.", 2),
+        "INVALID_CATEGORIES" => error("INVALID_CATEGORIES", "The category catalog is invalid. Preserve existing IDs and use valid unique names and icons.", 2),
+        "CATEGORY_CONFLICT" => error("CATEGORY_CONFLICT", "The category catalog changed. Read categories again and reconcile the requested changes.", 3),
         "RECORD_EXISTS" => error(
             "RECORD_EXISTS",
             "That record ID already exists. Read it with get before deciding whether to update it.",
@@ -116,7 +120,13 @@ impl RecordInput {
             created_at: self.created_at.unwrap_or_else(now),
             updated_at: self.updated_at.unwrap_or_else(now),
         };
-        validate_record(&record).map_err(|message| error("INVALID_RECORD", message, 2))?;
+        validate_record(&record).map_err(|message| {
+            if message == "UNKNOWN_CATEGORY" {
+                storage_error(message)
+            } else {
+                error("INVALID_RECORD", message, 2)
+            }
+        })?;
         Ok(record)
     }
 }
@@ -195,7 +205,7 @@ fn arguments(values: Vec<OsString>, default_root: PathBuf) -> CliResult<Argument
         )
     })?;
     let allowed: &[&str] = match command.as_str() {
-        "info" | "schema" | "list" => &[],
+        "info" | "schema" | "categories" | "list" => &[],
         "get" => &["--id"],
         "validate" | "create" => &["--input"],
         "update" => &["--input", "--expected-updated-at"],
@@ -332,15 +342,24 @@ fn parse_input<T: serde::de::DeserializeOwned>(
         .map_err(|failure| error("INVALID_JSON", format!("Expected UTF-8 JSON: {failure}"), 2))
 }
 
-fn schema() -> Value {
+fn schema(catalog: &CategoryCatalog) -> Value {
+    let category_ids: Vec<_> = catalog
+        .categories
+        .iter()
+        .map(|category| &category.id)
+        .collect();
     json!({
-        "schemaVersion": 2,
-        "capabilities": ["records.create", "records.update", "fields.update", "fields.delete", "attachments.import", "attachments.rename", "attachments.replace", "attachments.delete"],
+        "schemaVersion": 3,
+        "capabilities": ["categories.read", "records.create", "records.update", "fields.update", "fields.delete", "attachments.import", "attachments.rename", "attachments.replace", "attachments.delete"],
+        "categories": catalog.categories,
+        "categoriesRevision": catalog.revision,
+        "categoryIcons": CATEGORY_ICONS,
+        "categorySemantics": "Use an exact category ID from this library's categories command, never a translated label. Existing builtin IDs remain stable; custom IDs use collection- followed by a canonical lowercase UUID. Add, rename, reorder, or change category icons in Folio's category manager. Category names and icons do not change record IDs or existing attachment paths.",
         "record": {
             "type": "object", "additionalProperties": false, "required": ["id", "category", "title"],
             "properties": {
                 "id": {"type": "string", "format": "uuid", "description": "Canonical lowercase UUID. Generate it once and retain it for verification/retries."},
-                "category": {"type": "string", "enum": CATEGORIES},
+                "category": {"type": "string", "enum": category_ids},
                 "title": {"type": "string", "minLength": 1, "maxLength": 200},
                 "subtitle": {"type": "string", "default": ""},
                 "tags": {"type": "array", "items": {"type": "string"}, "default": []},
@@ -359,7 +378,7 @@ fn schema() -> Value {
                 "updatedAt": {"type": "string", "format": "date-time", "description": "Optional valid timestamp. Use get's updatedAt for the update command's expected revision."}
             }
         },
-        "limits": {"jsonInputBytes": MAX_INPUT_BYTES, "subtitleUtf8Bytes": 4000, "notesUtf8Bytes": 1000000, "tags": 100, "tagUtf8Bytes": 200, "fieldIdUtf8Bytes": 200, "fieldLabelUtf8Bytes": 1000, "fieldValueUtf8Bytes": 1000000, "attachmentsPerCommand": 100, "attachmentBytes": 2147483648u64},
+        "limits": {"jsonInputBytes": MAX_INPUT_BYTES, "categories": 100, "categoryNameCharacters": 60, "subtitleUtf8Bytes": 4000, "notesUtf8Bytes": 1000000, "tags": 100, "tagUtf8Bytes": 200, "fieldIdUtf8Bytes": 200, "fieldLabelUtf8Bytes": 1000, "fieldValueUtf8Bytes": 1000000, "attachmentsPerCommand": 100, "attachmentBytes": 2147483648u64},
         "attachmentInput": {"type": "array", "items": {"type": "string", "description": "Absolute path to a local regular source file."}, "maxItems": 100},
         "fieldPatch": {"type": "object", "additionalProperties": false, "minProperties": 1, "properties": {
             "label": {"type": "string"}, "labelZh": {"type": ["string", "null"]}, "value": {"type": "string"},
@@ -376,19 +395,46 @@ fn schema() -> Value {
     })
 }
 
+fn selected_catalog(args: &Arguments) -> CliResult<CategoryCatalog> {
+    // A new/empty path reports builtins without creating a folder, lock, or database.
+    if !args.root.is_dir() {
+        return Ok(builtin_catalog());
+    }
+    if !args.root.join("vault/folio.sqlite3").exists()
+        && !args.root.join("restore-journal.json").exists()
+    {
+        return Ok(builtin_catalog());
+    }
+    let _guard = operation_lock(&args.root, false).map_err(storage_error)?;
+    Store::agent_existing(args.root.clone())
+        .map_err(storage_error)?
+        .agent_categories()
+        .map_err(storage_error)
+}
+
 fn execute(args: Arguments, stdin: &mut dyn Read) -> CliResult<Value> {
     let command = args.command.as_str();
     let value = match command {
         "info" => {
             json!({"version": env!("CARGO_PKG_VERSION"), "dataDir": display_path(&args.root), "libraryExists": args.root.join("vault/folio.sqlite3").is_file()})
         }
-        "schema" => schema(),
+        "schema" => schema(&selected_catalog(&args)?),
+        "categories" => {
+            let catalog = selected_catalog(&args)?;
+            json!({"categories": catalog.categories, "revision": catalog.revision, "dataDir": display_path(&args.root)})
+        }
         "validate" => {
             let record = parse_input::<RecordInput>(&args, stdin)?.record()?;
+            require_category(&selected_catalog(&args)?.categories, &record.category)
+                .map_err(storage_error)?;
             json!({"valid": true, "id": record.id, "category": record.category, "fieldCount": record.fields.len()})
         }
         "create" => {
             let record = parse_input::<RecordInput>(&args, stdin)?.record()?;
+            // Reject an unknown category before initializing a new vault; the backend
+            // checks membership again inside the write transaction.
+            require_category(&selected_catalog(&args)?.categories, &record.category)
+                .map_err(storage_error)?;
             let _guard = operation_lock(&args.root, true).map_err(storage_error)?;
             let store = Store::open(args.root.clone()).map_err(storage_error)?;
             json!({"record": store.agent_create(record).map_err(storage_error)?, "dataDir": display_path(store.root())})
@@ -490,7 +536,7 @@ fn execute(args: Arguments, stdin: &mut dyn Read) -> CliResult<Value> {
                 "list" => {
                     let snapshot = store.agent_snapshot().map_err(storage_error)?;
                     let records: Vec<Value> = snapshot.records.iter().map(|record| json!({"id": record.id, "category": record.category, "title": record.title, "updatedAt": record.updated_at, "fieldCount": record.fields.len(), "attachmentCount": snapshot.attachments.iter().filter(|file| file.metadata.record_id == record.id).count()})).collect();
-                    json!({"records": records, "dataDir": snapshot.data_dir})
+                    json!({"records": records, "dataDir": snapshot.data_dir, "categories": snapshot.categories, "categoriesRevision": snapshot.categories_revision})
                 }
                 "get" => {
                     let snapshot = store.agent_snapshot().map_err(storage_error)?;
@@ -504,7 +550,7 @@ fn execute(args: Arguments, stdin: &mut dyn Read) -> CliResult<Value> {
                         .into_iter()
                         .filter(|file| file.metadata.record_id == record.id)
                         .collect();
-                    json!({"record": record, "attachments": attachments, "dataDir": snapshot.data_dir})
+                    json!({"record": record, "attachments": attachments, "dataDir": snapshot.data_dir, "categories": snapshot.categories, "categoriesRevision": snapshot.categories_revision})
                 }
                 "update" => {
                     json!({"record": store.agent_update(record.unwrap(), expected.unwrap()).map_err(storage_error)?, "dataDir": display_path(store.root())})

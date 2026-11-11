@@ -38,6 +38,10 @@ impl Store {
         db.busy_timeout(std::time::Duration::from_secs(5))
             .map_err(err)?;
         let records = read_records(&db)?;
+        let catalog = read_category_catalog(&db)?;
+        for record in &records {
+            require_category(&catalog.categories, &record.category)?;
+        }
         let attachments = read_attachments(&db)?
             .into_iter()
             .map(|item| self.public_attachment(item))
@@ -46,6 +50,8 @@ impl Store {
             records,
             attachments,
             data_dir: display_path(&self.root),
+            categories: catalog.categories,
+            categories_revision: catalog.revision,
         })
     }
 
@@ -55,6 +61,7 @@ impl Store {
         let tx = db
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .map_err(err)?;
+        require_registered_category(&tx, &record.category)?;
         let exists: bool = tx
             .query_row(
                 "SELECT EXISTS(SELECT 1 FROM records WHERE id=?1)",
@@ -84,6 +91,7 @@ impl Store {
         let tx = db
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .map_err(err)?;
+        require_registered_category(&tx, &record.category)?;
         let body: Option<String> = tx
             .query_row(
                 "SELECT body FROM records WHERE id=?1 AND deleted=0",

@@ -17,6 +17,9 @@ pub const CATEGORIES: &[&str] = &[
     "custom",
 ];
 
+mod categories;
+pub use categories::*;
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Field {
@@ -83,6 +86,8 @@ pub struct Snapshot {
     pub records: Vec<ProfileRecord>,
     pub attachments: Vec<Attachment>,
     pub data_dir: String,
+    pub categories: Vec<CategoryDefinition>,
+    pub categories_revision: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -92,6 +97,8 @@ pub struct BackupManifest {
     pub created_at: String,
     pub records: Vec<ProfileRecord>,
     pub attachments: Vec<StoredAttachment>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub categories: Option<Vec<CategoryDefinition>>,
 }
 
 pub fn now() -> String {
@@ -114,9 +121,7 @@ pub fn validate_date(value: &str) -> Result<()> {
 
 pub fn validate_record(record: &ProfileRecord) -> Result<()> {
     validate_id(&record.id)?;
-    if !CATEGORIES.contains(&record.category.as_str()) {
-        return Err("Unknown category.".into());
-    }
+    validate_category_id(&record.category)?;
     if record.title.trim().is_empty() || record.title.chars().count() > 200 {
         return Err("Title must contain 1–200 characters.".into());
     }

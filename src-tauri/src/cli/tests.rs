@@ -25,7 +25,7 @@ fn validation_info_schema_and_missing_reads_do_not_initialize_a_vault() {
     );
     assert_eq!(
         run(&root, &["schema"], &Value::Null).unwrap()["data"]["schemaVersion"],
-        2
+        3
     );
     assert_eq!(
         run(&root, &["validate", "--input", "-"], &input()).unwrap()["data"]["valid"],
@@ -36,6 +36,110 @@ fn validation_info_schema_and_missing_reads_do_not_initialize_a_vault() {
         "LIBRARY_NOT_FOUND"
     );
     assert!(!root.exists());
+    let categories = run(&root, &["categories"], &Value::Null).unwrap();
+    assert_eq!(categories["data"]["revision"], "builtin-v1");
+    assert_eq!(
+        categories["data"]["categories"].as_array().unwrap().len(),
+        9
+    );
+    assert!(!root.exists());
+}
+
+#[test]
+fn category_discovery_and_validation_follow_the_selected_library_without_writes() {
+    let temp = TempDir::new().unwrap();
+    let root = temp.path().join("data");
+    let store = Store::open(root.clone()).unwrap();
+    let mut categories = crate::model::builtin_categories();
+    categories.insert(
+        0,
+        crate::model::CategoryDefinition {
+            id: "collection-00000000-0000-4000-8000-000000000042".into(),
+            name_en: "Travel".into(),
+            name_zh: "旅行".into(),
+            icon: "plane".into(),
+        },
+    );
+    let catalog = store.save_categories(categories, "builtin-v1").unwrap();
+    let mut payload = input();
+    payload["category"] = catalog.categories[0].id.clone().into();
+    let before = fs::read(root.join("vault/folio.sqlite3")).unwrap();
+    let discovery = run(&root, &["categories"], &Value::Null).unwrap();
+    let schema = run(&root, &["schema"], &Value::Null).unwrap();
+    assert_eq!(discovery["data"]["revision"], catalog.revision);
+    assert_eq!(discovery["data"]["categories"][0]["nameZh"], "旅行");
+    assert_eq!(
+        schema["data"]["categories"],
+        discovery["data"]["categories"]
+    );
+    assert_eq!(
+        schema["data"]["record"]["properties"]["category"]["enum"][0],
+        payload["category"]
+    );
+    assert_eq!(
+        run(&root, &["validate", "--input", "-"], &payload).unwrap()["data"]["valid"],
+        true
+    );
+    assert_eq!(before, fs::read(root.join("vault/folio.sqlite3")).unwrap());
+    let created = run(&root, &["create", "--input", "-"], &payload).unwrap();
+    assert_eq!(created["data"]["record"]["category"], payload["category"]);
+    let id = payload["id"].as_str().unwrap();
+    let fetched = run(&root, &["get", "--id", id], &Value::Null).unwrap();
+    let listed = run(&root, &["list"], &Value::Null).unwrap();
+    for reply in [&fetched, &listed] {
+        assert_eq!(reply["data"]["categories"], discovery["data"]["categories"]);
+        assert_eq!(reply["data"]["categoriesRevision"], catalog.revision);
+    }
+    let previous = fetched["data"]["record"]["updatedAt"].as_str().unwrap();
+    payload["title"] = "Trip information".into();
+    assert!(run(
+        &root,
+        &["update", "--input", "-", "--expected-updated-at", previous],
+        &payload
+    )
+    .is_ok());
+}
+
+#[test]
+fn unregistered_custom_categories_fail_without_initializing_new_library() {
+    let temp = TempDir::new().unwrap();
+    let root = temp.path().join("not-created");
+    let mut payload = input();
+    payload["category"] = "collection-00000000-0000-4000-8000-000000000042".into();
+    for command in ["validate", "create"] {
+        let failure = run(&root, &[command, "--input", "-"], &payload).unwrap_err();
+        assert_eq!(failure.code, "UNKNOWN_CATEGORY");
+        assert_eq!(failure.exit, 2);
+        assert!(!root.exists());
+    }
+    fs::create_dir(&root).unwrap();
+    let discovery = run(&root, &["categories"], &Value::Null).unwrap();
+    assert_eq!(discovery["data"]["revision"], "builtin-v1");
+    assert_eq!(fs::read_dir(&root).unwrap().count(), 0);
+}
+
+#[test]
+fn legacy_schema_and_catalog_reads_do_not_migrate_or_rewrite_database() {
+    let temp = TempDir::new().unwrap();
+    let root = temp.path().join("legacy");
+    run(&root, &["create", "--input", "-"], &input()).unwrap();
+    let path = root.join("vault/folio.sqlite3");
+    let db = rusqlite::Connection::open(&path).unwrap();
+    db.execute("DROP TABLE category_catalog", []).unwrap();
+    drop(db);
+    let before = fs::read(&path).unwrap();
+    let schema = run(&root, &["schema"], &Value::Null).unwrap();
+    let categories = run(&root, &["categories"], &Value::Null).unwrap();
+    assert_eq!(schema["data"]["categoriesRevision"], "builtin-v1");
+    assert_eq!(
+        schema["data"]["categories"],
+        categories["data"]["categories"]
+    );
+    assert_eq!(
+        categories["data"]["categories"].as_array().unwrap().len(),
+        9
+    );
+    assert_eq!(fs::read(&path).unwrap(), before);
 }
 
 #[test]

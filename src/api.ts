@@ -1,6 +1,7 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-import type { ProfileRecord, Snapshot, Attachment, Locale } from './types';
+import type { ProfileRecord, Snapshot, Attachment, Locale, CategoryCatalog, CategoryDefinition } from './types';
+import { defaultCategories, defaultCategoriesRevision, categoryValidation } from './categories';
 
 export const desktop = isTauri();
 const timestamp = '2026-01-12T09:00:00.000Z';
@@ -28,6 +29,15 @@ let preview = structuredClone(demo);
 const removed = new Map<string, Attachment>();
 export const api = {
   load: () => desktop ? invoke<Snapshot>('load_snapshot') : Promise.resolve(structuredClone(preview)),
+  saveCategories: async (categories: CategoryDefinition[], expectedRevision: string): Promise<CategoryCatalog> => {
+    if (desktop) return invoke<CategoryCatalog>('save_categories', { categories, expectedRevision });
+    if ((preview.categoriesRevision ?? defaultCategoriesRevision) !== expectedRevision) throw new Error('CATEGORY_CONFLICT');
+    if (categoryValidation(categories) || (preview.categories ?? defaultCategories).some(category => !categories.some(item => item.id === category.id))) throw new Error('INVALID_CATEGORIES');
+    const catalog = { categories: structuredClone(categories), revision: crypto.randomUUID() };
+    preview.categories = catalog.categories;
+    preview.categoriesRevision = catalog.revision;
+    return structuredClone(catalog);
+  },
   save: async (record: ProfileRecord) => {
     if (desktop) return invoke<ProfileRecord>('save_record', { record });
     const saved = { ...record, updatedAt: new Date().toISOString() };

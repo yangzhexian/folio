@@ -215,8 +215,7 @@ export function AttachmentPreview({ files, initialId, locale, busy, onClose, onO
         <Tool label={text.path} disabled={busy} onClick={() => onCopyPath(file)}><Copy size={16}/></Tool>
         <Tool label={text.folder} disabled={busy} onClick={() => onReveal(file)}><FolderOpen size={18}/></Tool>
         {native && <button type="button" className={`icon-button ${native.pinned ? 'active' : ''}`} aria-pressed={native.pinned} aria-label={native.pinned ? text.unpin : text.pin} title={native.pinned ? text.unpin : text.pin} disabled={native.pinning} onClick={native.onTogglePin}>{native.pinned ? <PinOff size={17}/> : <Pin size={17}/>}</button>}
-        <span className="tool-divider"/>
-        <button type="button" className="icon-button preview-close" title={text.close} aria-label={text.close} onClick={onClose}><X size={19}/></button>
+        {!native && <><span className="tool-divider"/><button type="button" className="icon-button preview-close" title={text.close} aria-label={text.close} onClick={onClose}><X size={19}/></button></>}
       </div>
     </header>
     <PreviewPane key={`${file.id}:${file.revision ?? ''}:${file.relativePath}`} file={file} locale={locale}/>
