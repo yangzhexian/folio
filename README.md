@@ -6,7 +6,7 @@ A small desktop library for personal details, education, experience, research, c
 
 **[Watch or download the full introduction](docs/media/folio-intro.mp4)**: 60.6 seconds, 2K (2560 × 1440), English titles with Chinese captions and original instrumental music. The right-hand window follows one uninterrupted operation from search and editing through image/PDF preview, file management, and appearance changes. The embedded 1080p GIF (1920 × 1080) shows the complete approximately 60-second tour at normal speed; a [static poster](docs/media/folio-poster.png) is also available. All records shown are fictional demonstration data captured in Folio 0.4.1. Built with [Remotion](https://github.com/remotion-dev/remotion); [storyboard](video/storyboard.md) and [source and reproduction instructions](video/README.md).
 
-Download the Windows installer from [Folio v0.4.1](https://github.com/yangzhexian/folio/releases/tag/v0.4.1). The release also includes a portable desktop/CLI package, the agent skill, and file checksums.
+Download the Windows installer from [Folio v0.4.3](https://github.com/yangzhexian/folio/releases/tag/v0.4.3). The release also includes a portable desktop/CLI package, the agent skill, and file checksums.
 
 ## Features
 
