@@ -1,0 +1,12 @@
+{
+  "identifier": "dev.folio.native-smoke",
+  "app": {
+    "appDirectoriesOverride": "./webview-data",
+    "windows": [{
+      "label": "main", "title": "Folio native smoke", "width": 1280, "height": 820, "minWidth": 900, "minHeight": 620,
+      "visible": false, "focus": false, "theme": "Light", "dragDropEnabled": true,
+      "additionalBrowserArgs": "--remote-debugging-port=0 --disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows"
+    }]
+  },
+  "bundle": { "active": false }
+}

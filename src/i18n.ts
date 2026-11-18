@@ -1,7 +1,7 @@
 import type { Locale } from './types';
 
 const en = {
-  library: 'Personal library', all: 'All records', favorites: 'Favorites', files: 'Files', collections: 'COLLECTIONS',
+  library: 'Personal library', all: 'All records', favorites: 'Favorites', files: 'Files', collections: 'Collections',
   new: 'New', newRecord: 'New record', search: 'Search records, fields, files…',
   sortRecords: 'Sort records', sortUpdatedDesc: 'Updated: newest first', sortUpdatedAsc: 'Updated: oldest first',
   sortCreatedDesc: 'Created: newest first', sortCreatedAsc: 'Created: oldest first', sortTitleAsc: 'Title: A–Z', sortTitleDesc: 'Title: Z–A',

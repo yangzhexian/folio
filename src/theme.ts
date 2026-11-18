@@ -9,13 +9,7 @@ export interface Appearance {
   accent: AccentColor;
 }
 
-export const accentSwatches: Record<AccentColor, string> = {
-  sage: '#4d6b50',
-  blue: '#4269a3',
-  violet: '#7353a1',
-  rose: '#a34465',
-  amber: '#94641b',
-};
+export const defaultAppearance: Readonly<Appearance> = { theme: 'light', accent: 'sage' };
 
 export function isThemeMode(value: unknown): value is ThemeMode {
   return typeof value === 'string' && themeModes.some((mode) => mode === value);
@@ -26,7 +20,7 @@ export function isAccentColor(value: unknown): value is AccentColor {
 }
 
 export function readAppearance(storage?: Pick<Storage, 'getItem'>): Appearance {
-  const appearance: Appearance = { theme: 'light', accent: 'sage' };
+  const appearance = { ...defaultAppearance };
   if (!storage) return appearance;
   try {
     const theme = storage.getItem('folio.theme');

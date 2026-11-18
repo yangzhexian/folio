@@ -49,8 +49,10 @@ fn legacy_attachment_reads_have_stable_tokens_without_database_writes() {
         )
         .unwrap();
     let before = fs::read(store.vault().join("folio.sqlite3")).unwrap();
-    let first = store.agent_snapshot().unwrap().attachments.remove(0);
-    let second = store.agent_snapshot().unwrap().attachments.remove(0);
+    let (_, mut files, _) = store.agent_get(&record.id).unwrap();
+    let first = files.remove(0);
+    let (_, mut files, _) = store.agent_get(&record.id).unwrap();
+    let second = files.remove(0);
     assert!(token(&first).starts_with("legacy-"));
     assert_eq!(token(&first), token(&second));
     assert_eq!(
@@ -87,7 +89,7 @@ fn legacy_attachment_reads_have_stable_tokens_without_database_writes() {
     );
     assert!(store.attachment_path(&legacy.id).is_err());
     assert!(store.attachment_preview(&legacy.id).is_err());
-    assert!(store.agent_snapshot().unwrap().attachments.is_empty());
+    assert!(store.snapshot().unwrap().attachments.is_empty());
     let restored = store.restore_attachment(&legacy.id).unwrap();
     assert_ne!(token(&restored), token(&same_name));
     assert_eq!(
@@ -135,7 +137,7 @@ fn backup_uses_the_original_attachment_shape_and_restore_assigns_fresh_revisions
     // The exported manifest has the old schema and exercises old-backup input.
     let restored = Store::open(temp.path().join("restored")).unwrap();
     restored.restore_backup(&backup).unwrap();
-    let files = restored.agent_snapshot().unwrap().attachments;
+    let files = restored.snapshot().unwrap().attachments;
     assert_eq!(files[0].metadata.id, attachment.metadata.id);
     assert_eq!(files[0].metadata.record_id, record.id);
     assert_ne!(token(&files[0]), token(&attachment));
@@ -188,7 +190,7 @@ fn replacement_preserves_identity_sources_previous_bytes_and_unrelated_content()
     assert!(validate_relative_path(&replaced.metadata.relative_path).is_ok());
     assert_ne!(token(&replaced), token(&renamed));
     assert_eq!(
-        serde_json::to_value(&store.agent_snapshot().unwrap().records[0]).unwrap(),
+        serde_json::to_value(&store.snapshot().unwrap().records[0]).unwrap(),
         serde_json::to_value(record.clone()).unwrap()
     );
     let same_source = replaced.absolute_path.clone();
@@ -208,7 +210,7 @@ fn replacement_preserves_identity_sources_previous_bytes_and_unrelated_content()
         replaced.metadata.relative_path
     );
     assert_eq!(again.metadata.size, replaced.metadata.size);
-    assert_eq!(store.agent_snapshot().unwrap().attachments.len(), 1);
+    assert_eq!(store.snapshot().unwrap().attachments.len(), 1);
 }
 
 #[test]
@@ -238,7 +240,7 @@ fn invalid_sources_and_database_failures_leave_the_active_attachment_unchanged()
         )
         .is_err());
     assert_eq!(
-        serde_json::to_value(&store.agent_snapshot().unwrap().attachments[0]).unwrap(),
+        serde_json::to_value(&store.snapshot().unwrap().attachments[0]).unwrap(),
         original_metadata
     );
     assert_eq!(

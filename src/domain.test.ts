@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fieldLabel, filterAttachments, filterRecords, findMatchingFields, formatBytes, formatRecord } from './domain';
+import { createLibraryIndex, fieldLabel, filterAttachments, filterRecords, findMatchingFields, formatBytes, formatRecord } from './domain';
 import { createRecord, templates } from './templates';
 import { defaultCategories } from './categories';
 import type { Attachment, Field, ProfileRecord } from './types';
@@ -165,6 +165,38 @@ describe('matching field results', () => {
     const example = record({ fields: [empty, literal] });
     expect(findMatchingFields(example, 'qq号')).toEqual([empty, literal]);
     expect(findMatchingFields(example, 'ＱＱ　号')).toEqual([empty, literal]);
+  });
+});
+
+describe('library snapshot index', () => {
+  it('keeps individual file and field matches scoped when a record matches across siblings', () => {
+    const item = record();
+    const first = { ...attachment, fileName: 'summary.pdf' };
+    const second = { ...attachment, id: 'second', fileName: 'budget.pdf', originalName: 'expenses.pdf' };
+    const orphan = { ...attachment, id: 'orphan', recordId: 'missing' };
+    const index = createLibraryIndex([item], [second, first, orphan]);
+    expect(index.filesByRecord.get(item.id)).toEqual([second, first]);
+    expect(index.search('summary budget', 'all', true)).toMatchObject({ records: [item], files: [] });
+    expect(index.search('summary university', 'all').fields.size).toBe(0);
+    expect(index.search('summary university', 'all', true).files).toEqual([first]);
+    expect(index.search('', 'all', true).files).toEqual([second, first]);
+  });
+
+  it('indexes the current snapshot after field, category and filename changes', () => {
+    const old = record({ favorite: true });
+    const before = createLibraryIndex([old], [attachment]);
+    expect(before.search('Example University', 'favorites').fields.get(old.id)).toEqual(old.fields);
+    const item = { ...old, fields: [field({ value: 'New faculty' })], favorite: false };
+    const renamed = { ...attachment, fileName: 'revised.pdf', originalName: 'revised.pdf' };
+    const catalog = defaultCategories.map(category => category.id === item.category ? { ...category, nameEn: 'Training' } : category);
+    const after = createLibraryIndex([item], [renamed], catalog);
+    expect(after.favoriteCount).toBe(0);
+    expect(after.categoryCounts.get(item.category)).toBe(1);
+    expect(after.recordsById.get(item.id)).toBe(item);
+    expect(after.search('example university', 'all').records).toEqual([]);
+    expect(after.search('transcript', 'all', true).files).toEqual([]);
+    expect(after.search('training new faculty', 'all').fields.get(item.id)).toEqual(item.fields);
+    expect(after.search('revised', 'favorites').records).toEqual([]);
   });
 });
 

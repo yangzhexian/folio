@@ -119,24 +119,38 @@ pub async fn open_preview_window(
     if state.creating.swap(true, Ordering::SeqCst) {
         return Ok(true);
     }
-    let built = WebviewWindowBuilder::new(
+    let builder = WebviewWindowBuilder::new(
         &app,
         LABEL,
         WebviewUrl::App("index.html?view=preview".into()),
-    )
-    .title("Folio - Preview")
-    .inner_size(1000.0, 760.0)
-    .min_inner_size(600.0, 420.0)
-    .resizable(true)
-    .minimizable(true)
-    .maximizable(true)
-    .decorations(true)
-    .always_on_top(false)
-    .theme(window.theme().ok())
-    .center()
-    .disable_drag_drop_handler()
-    .on_navigation(move |url| is_preview_route(url, &trusted_url))
-    .build();
+    );
+    // WebView2 requires windows sharing a data directory to use matching browser arguments.
+    #[cfg(target_os = "windows")]
+    let builder = match app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|config| config.label == window.label())
+        .and_then(|config| config.additional_browser_args.as_deref())
+    {
+        Some(args) => builder.additional_browser_args(args),
+        None => builder,
+    };
+    let built = builder
+        .title("Folio - Preview")
+        .inner_size(1000.0, 760.0)
+        .min_inner_size(600.0, 420.0)
+        .resizable(true)
+        .minimizable(true)
+        .maximizable(true)
+        .decorations(true)
+        .always_on_top(false)
+        .theme(window.theme().ok())
+        .center()
+        .disable_drag_drop_handler()
+        .on_navigation(move |url| is_preview_route(url, &trusted_url))
+        .build();
     state.creating.store(false, Ordering::SeqCst);
     let preview = built.map_err(|error| error.to_string())?;
     if state.main_closed.load(Ordering::SeqCst) {

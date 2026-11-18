@@ -1,21 +1,20 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import { defineConfig, type Plugin } from 'vite';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, normalizePath, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Keep PDF fonts and decoders beside the app in both development and packaged builds.
+// Serve the PDF worker, fonts and decoders as unmodified package files in both modes.
 function localPdfAssets(): Plugin {
   const root = dirname(createRequire(import.meta.url).resolve('pdfjs-dist/package.json'));
   const groups = ['cmaps', 'standard_fonts', 'wasm', 'iccs'];
   const assets = new Map<string, Buffer>();
   let prefix = '/pdfjs-assets/';
-  let build = false;
   return {
     name: 'folio-local-pdf-assets',
     configResolved(config) {
       prefix = `${config.base}pdfjs-assets/`;
-      build = config.command === 'build';
     },
     async buildStart() {
       assets.clear();
@@ -26,14 +25,15 @@ function localPdfAssets(): Plugin {
           const name = `${group}/${entry.name}`;
           const source = await readFile(join(root, name));
           assets.set(name, source);
-          if (build) {
-            this.emitFile({ type: 'asset', fileName: `pdfjs-assets/${name}`, source });
-          }
         }
       }
-      const license = await readFile(join(root, 'LICENSE'));
-      assets.set('LICENSE', license);
-      if (build) this.emitFile({ type: 'asset', fileName: 'pdfjs-assets/LICENSE', source: license });
+      assets.set('pdf.worker.min.mjs', await readFile(join(root, 'build', 'pdf.worker.min.mjs')));
+      assets.set('LICENSE', await readFile(join(root, 'LICENSE')));
+    },
+    generateBundle() {
+      for (const [name, source] of assets) {
+        this.emitFile({ type: 'asset', fileName: `pdfjs-assets/${name}`, source });
+      }
     },
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
@@ -45,7 +45,8 @@ function localPdfAssets(): Plugin {
           response.end();
           return;
         }
-        response.setHeader('Content-Type', pathname.endsWith('.wasm') ? 'application/wasm' : pathname.endsWith('.js') ? 'text/javascript' : 'application/octet-stream');
+        const type = pathname.endsWith('.wasm') ? 'application/wasm' : /\.m?js$/.test(pathname) ? 'text/javascript' : 'application/octet-stream';
+        response.setHeader('Content-Type', type);
         response.setHeader('Cache-Control', 'no-cache');
         response.end(source);
       });
@@ -56,7 +57,18 @@ function localPdfAssets(): Plugin {
 export default defineConfig({
   plugins: [react(), localPdfAssets()],
   clearScreen: false,
-  server: { host: '127.0.0.1', port: 1420, strictPort: true },
+  // Only the app entry belongs to this Vite instance. Cargo output and disposable
+  // native/benchmark worktrees can otherwise add hundreds of thousands of watch paths.
+  optimizeDeps: { entries: ['index.html'] },
+  server: {
+    host: '127.0.0.1',
+    port: 1420,
+    strictPort: true,
+    watch: {
+      ignored: ['artifacts', 'src-tauri', 'video', 'test-results', 'playwright-report'].map(directory =>
+        normalizePath(fileURLToPath(new URL(directory, import.meta.url))) + '/**'),
+    },
+  },
   envPrefix: ['VITE_', 'TAURI_ENV_*'],
   build: { target: 'es2022' },
 });

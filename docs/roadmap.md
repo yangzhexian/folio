@@ -49,7 +49,7 @@ Offer a **Library health** action that reports missing or changed attachments an
 
 ## Later: larger libraries and richer retrieval
 
-The current UI loads a complete snapshot and filters it in memory. Establish repeatable measurements with synthetic libraries at several sizes before changing that architecture. Measure startup, search latency, import responsiveness, and peak memory. Introduce paged queries, an SQLite search index, or list virtualization only where those measurements show a benefit, while preserving bilingual synonyms, sensitive-field masking, stable sorting, and selection behavior.
+The current UI loads a complete snapshot and filters it in memory. Indexed search and record-scoped CLI reads now have repeatable 100-, 1,000- and 10,000-record baselines. Use the [frontend measurements](benchmarks/frontend.md) and [storage measurements](benchmarks/backend.md) when evaluating changes to startup, search, imports or memory. Introduce paged queries, an SQLite search index, or list virtualization only where those measurements show a benefit, while preserving bilingual synonyms, sensitive-field masking, stable sorting, and selection behavior.
 
 Then consider batch tagging, explicit duplicate-file detection, and CSV/JSON import with field mapping and a preview of changes. Imports should report validation errors before writing and offer a dry run. Detecting identical files should suggest an action rather than silently merging records or deleting originals.
 

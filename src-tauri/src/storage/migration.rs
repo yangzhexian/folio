@@ -248,6 +248,7 @@ fn validate_staged_vault(root: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::storage::backup::RestoreJournal;
     use tempfile::TempDir;
 
     fn record(title: &str) -> ProfileRecord {

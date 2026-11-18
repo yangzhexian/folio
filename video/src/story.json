@@ -1,0 +1,93 @@
+[
+  {
+    "id": "opening",
+    "start": 0,
+    "label": "Folio",
+    "en": "Your field guide to personal details.",
+    "zh": "把常用资料放在手边。"
+  },
+  {
+    "id": "organize",
+    "start": 3,
+    "label": "Privacy",
+    "en": "Reveal the details you need.",
+    "zh": "按需显示敏感字段。"
+  },
+  {
+    "id": "search",
+    "start": 6.3,
+    "label": "Find",
+    "en": "Search a field. Copy its value.",
+    "zh": "直接搜索字段，复制匹配的值。"
+  },
+  {
+    "id": "edit",
+    "start": 11.3,
+    "label": "Arrange",
+    "en": "Insert a field, then drag it into place.",
+    "zh": "在指定位置插入字段，拖动调整顺序。"
+  },
+  {
+    "id": "import",
+    "start": 21.4,
+    "label": "Attach",
+    "en": "Drop a file onto its record.",
+    "zh": "拖入图片，归档到当前条目。"
+  },
+  {
+    "id": "image",
+    "start": 24.7,
+    "label": "Preview",
+    "en": "Open the image and zoom in.",
+    "zh": "在独立窗口中打开图片并放大。"
+  },
+  {
+    "id": "pin",
+    "start": 27.6,
+    "label": "Pin",
+    "en": "Keep the viewer above your work.",
+    "zh": "置顶并移动预览窗，继续操作主窗口。"
+  },
+  {
+    "id": "pdf",
+    "start": 33,
+    "label": "Read",
+    "en": "Turn the page without leaving Folio.",
+    "zh": "切换到 PDF，继续翻页阅读。"
+  },
+  {
+    "id": "files",
+    "start": 38,
+    "label": "Reuse",
+    "en": "Copy the managed document path.",
+    "zh": "复制正在预览的文件路径。"
+  },
+  {
+    "id": "collections",
+    "start": 41.5,
+    "label": "Collect",
+    "en": "Give a collection its own icon.",
+    "zh": "调整分类顺序、更换图标和名称。"
+  },
+  {
+    "id": "appearance",
+    "start": 51,
+    "label": "Appearance",
+    "en": "Carry your workspace into dark mode.",
+    "zh": "切换深色外观，保留当前工作区。"
+  },
+  {
+    "id": "language",
+    "start": 53.5,
+    "label": "Language",
+    "en": "Switch languages in place.",
+    "zh": "中英文界面，一键切换。"
+  },
+  {
+    "id": "closing",
+    "start": 57,
+    "label": "Folio",
+    "en": "Everything in its place.",
+    "zh": "个人资料，各得其所。"
+  }
+]

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accentColors, accentSwatches, applyAppearance, isAccentColor, isThemeMode, readAppearance, saveAppearance, themeModes } from './theme';
+import { accentColors, applyAppearance, isAccentColor, isThemeMode, readAppearance, saveAppearance, themeModes } from './theme';
 
 describe('appearance preferences', () => {
   it('keeps the existing light sage theme when preferences are absent', () => {
@@ -23,7 +23,6 @@ describe('appearance preferences', () => {
       for (const accent of accentColors) {
         expect(saveAppearance({ theme, accent }, storage)).toBe(true);
         expect(readAppearance(storage)).toEqual({ theme, accent });
-        expect(accentSwatches[accent]).toMatch(/^#[0-9a-f]{6}$/);
       }
     }
   });

@@ -3,13 +3,7 @@ use super::*;
 impl Store {
     /// Read the catalog without initializing or migrating the library.
     pub fn agent_categories(&self) -> Result<CategoryCatalog> {
-        let db = Connection::open_with_flags(
-            self.vault().join("folio.sqlite3"),
-            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-        )
-        .map_err(err)?;
-        db.busy_timeout(std::time::Duration::from_secs(5))
-            .map_err(err)?;
+        let db = self.read_connection()?;
         read_category_catalog(&db)
     }
 

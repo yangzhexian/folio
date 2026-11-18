@@ -1,0 +1,66 @@
+param(
+  [Parameter(Mandatory)][string]$PreviousInstaller,
+  [Parameter(Mandatory)][string]$CandidateInstaller,
+  [string]$SevenZip = '7z'
+)
+
+$ErrorActionPreference = 'Stop'
+$workspace = Join-Path ([System.IO.Path]::GetTempPath()) ("folio-install-" + [guid]::NewGuid().ToString('N'))
+$install = Join-Path $workspace 'app'
+New-Item -ItemType Directory -Path $workspace | Out-Null
+$utf8 = New-Object System.Text.UTF8Encoding($false)
+
+function Install-Folio([string]$installer) {
+  $setup = (Resolve-Path -LiteralPath $installer).Path
+  # NSIS consumes the rest of the command line as the /D path.
+  $process = Start-Process -FilePath $setup -ArgumentList "/S /D=$install" -WindowStyle Hidden -Wait -PassThru
+  if ($process.ExitCode -ne 0) { throw "Installer exited with code $($process.ExitCode)" }
+  foreach ($file in 'folio.exe','folio-cli.exe','skills/folio-data-entry/SKILL.md') {
+    if (-not (Test-Path -LiteralPath (Join-Path $install $file) -PathType Leaf)) { throw "Missing installed file $file" }
+  }
+}
+
+function Invoke-Folio([string[]]$CliArgs) {
+  $response = & (Join-Path $install 'folio-cli.exe') @CliArgs
+  if ($LASTEXITCODE -ne 0) { throw "Installed CLI failed during $($CliArgs[0])" }
+  return ($response | ConvertFrom-Json).data
+}
+
+# Tauri stamps the bundle type into the packaged desktop image and restores the
+# standalone binary after bundling. Compare against the bytes shipped in NSIS.
+$candidatePayload = Join-Path $workspace 'candidate-payload'
+& $SevenZip e -y "-o$candidatePayload" (Resolve-Path -LiteralPath $CandidateInstaller).Path folio.exe folio-cli.exe | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'Unable to extract the candidate executable payloads.' }
+Install-Folio $PreviousInstaller
+$recordId = [guid]::NewGuid().ToString()
+$recordFile = Join-Path $workspace 'record.json'
+$record = @{
+  id=$recordId; title='Synthetic upgrade record'; category='identity'; notes='Migration fixture'; tags=@('upgrade')
+  fields=@(@{ id='reference'; label='Reference'; labelZh='编号'; value='SYNTHETIC-043'; kind='text'; sensitive=$true })
+}
+[System.IO.File]::WriteAllText($recordFile, ($record | ConvertTo-Json -Depth 8), $utf8)
+$null = Invoke-Folio @('create','--input',$recordFile)
+$source = Join-Path $workspace 'synthetic.txt'
+[System.IO.File]::WriteAllText($source, 'Synthetic attachment for upgrade verification.', $utf8)
+$inputFile = Join-Path $workspace 'files.json'
+[System.IO.File]::WriteAllText($inputFile, (ConvertTo-Json -InputObject @($source)), $utf8)
+$null = Invoke-Folio @('attach','--record-id',$recordId,'--input',$inputFile)
+$before = Invoke-Folio @('get','--id',$recordId)
+$hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $before.attachments[0].absolutePath).Hash
+Install-Folio $CandidateInstaller
+foreach ($file in 'folio.exe','folio-cli.exe') {
+  $installedHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $install $file)).Hash
+  $candidateHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $candidatePayload $file)).Hash
+  if ($installedHash -ne $candidateHash) { throw "Installed $file differs from the candidate installer payload." }
+}
+$after = Invoke-Folio @('get','--id',$recordId)
+$pair = @{ before=$before.record; after=$after.record } | ConvertTo-Json -Depth 12 -Compress
+$pair | node -e "const pair=JSON.parse(require('node:fs').readFileSync(0,'utf8')); require('node:assert/strict').deepEqual(pair.after,pair.before);"
+if ($LASTEXITCODE -ne 0) { throw 'The installed upgrade changed the saved record.' }
+$version = (Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot '../package.json') | ConvertFrom-Json).version
+if ((Invoke-Folio @('info')).version -ne $version -or
+    $after.attachments[0].absolutePath -ne $before.attachments[0].absolutePath -or
+    (Get-FileHash -Algorithm SHA256 -LiteralPath $after.attachments[0].absolutePath).Hash -ne $hash) {
+  throw 'Upgrade changed the record, path or bytes, or installed the wrong CLI.'
+}
+Write-Output 'Verified the installed version, record revision, managed path and attachment bytes after upgrade.'

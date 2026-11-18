@@ -1,5 +1,10 @@
+use super::attachments::safe_stem;
+use super::backup::RestoreJournal;
 use super::*;
 use tempfile::TempDir;
+use zip::write::SimpleFileOptions;
+
+mod benchmark;
 
 fn record() -> ProfileRecord {
     ProfileRecord {
@@ -340,6 +345,20 @@ fn backup_round_trip_restores_metadata_files_and_keeps_previous_vault() {
         .to_string_lossy()
         .starts_with("previous-")));
     assert!(!store.root().join("restore-journal.json").exists());
+}
+
+#[test]
+fn exporting_to_a_directory_preserves_its_contents_and_name() {
+    let (temp, store) = store();
+    let destination = temp.path().join("keep");
+    fs::create_dir(&destination).unwrap();
+    fs::write(destination.join("existing.txt"), b"preserve").unwrap();
+    assert!(store.export_backup(&destination).is_err());
+    assert_eq!(
+        fs::read(destination.join("existing.txt")).unwrap(),
+        b"preserve"
+    );
+    assert_eq!(fs::read_dir(temp.path()).unwrap().count(), 2);
 }
 
 fn write_archive(path: &Path, entries: &[(&str, &[u8])]) {

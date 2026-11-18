@@ -25,7 +25,7 @@ const snapshot = {
 };
 
 async function openSyntheticLibrary(page: Page) {
-  await page.route('http://127.0.0.1:1420/', async route => {
+  await page.route('/', async route => {
     const response = await route.fetch();
     const html = await response.text();
     const bootstrap = `

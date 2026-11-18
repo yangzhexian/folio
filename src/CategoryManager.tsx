@@ -1,3 +1,4 @@
+import { Button, IconButton } from './ui/Buttons';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { FormEvent, PointerEvent } from 'react';
 import { ArrowDown, ArrowUp, Check, GripVertical, Plus, Trash2 } from 'lucide-react';
@@ -111,20 +112,20 @@ export function CategoryManager({ categories, initialIds, locale, busy, error, o
           return <div key={category.id} data-category-id={category.id} className={`category-row ${dragView?.id === category.id ? 'dragging' : ''} ${dragView?.target === category.id && dragView.id !== category.id ? 'drop-target' : ''}`}>
             <div className="category-row-main">
               <div className="category-row-icons">
-                <button type="button" className="icon-button category-drag" aria-label={t('reorderCategory')} title={t('reorderCategory')} disabled={busy}
+                <IconButton className="category-drag" label={t('reorderCategory')} disabled={busy}
                   onPointerDown={event => startDrag(event, category.id)} onPointerMove={updateDrag} onPointerUp={() => endDrag()} onPointerCancel={() => endDrag(true)} onLostPointerCapture={() => endDrag(true)}
-                  onKeyDown={event => { if (event.key === 'ArrowUp' || event.key === 'ArrowDown') { event.preventDefault(); move(category.id, index + (event.key === 'ArrowUp' ? -1 : 1)); } }}><GripVertical size={16}/></button>
+                  onKeyDown={event => { if (event.key === 'ArrowUp' || event.key === 'ArrowDown') { event.preventDefault(); move(category.id, index + (event.key === 'ArrowUp' ? -1 : 1)); } }}><GripVertical size={16}/></IconButton>
                 <button type="button" className="category-icon-button" aria-label={t('chooseCategoryIcon')} title={t('chooseCategoryIcon')} aria-expanded={picker === category.id} disabled={busy} onClick={() => setPicker(picker === category.id ? null : category.id)}><Icon size={20}/></button>
               </div>
               <input aria-label={t('categoryEnglishName')} value={category.nameEn} maxLength={60} disabled={busy} autoComplete="off" onChange={event => update(category.id, { nameEn: event.target.value })}/>
               <input aria-label={t('categoryChineseName')} value={category.nameZh} maxLength={60} disabled={busy} autoComplete="off" onChange={event => update(category.id, { nameZh: event.target.value })}/>
               <div className="category-order-controls">
-                <button type="button" className="icon-button" aria-label={t('moveCategoryUp')} title={t('moveCategoryUp')} disabled={busy || index === 0} onClick={() => move(category.id, index - 1)}><ArrowUp size={16}/></button>
-                <button type="button" className="icon-button" aria-label={t('moveCategoryDown')} title={t('moveCategoryDown')} disabled={busy || index === categories.length - 1} onClick={() => move(category.id, index + 1)}><ArrowDown size={16}/></button>
-                {!initialIds.has(category.id) && <button type="button" className="icon-button" aria-label={t('removeNewCategory')} title={t('removeNewCategory')} disabled={busy} onClick={() => {
+                <IconButton label={t('moveCategoryUp')} disabled={busy || index === 0} onClick={() => move(category.id, index - 1)}><ArrowUp size={16}/></IconButton>
+                <IconButton label={t('moveCategoryDown')} disabled={busy || index === categories.length - 1} onClick={() => move(category.id, index + 1)}><ArrowDown size={16}/></IconButton>
+                {!initialIds.has(category.id) && <IconButton label={t('removeNewCategory')} disabled={busy} onClick={() => {
                   const remaining = categories.filter(item => item.id !== category.id);
                   onChange(remaining); setPicker(null); setFocusId(remaining[Math.min(index, remaining.length - 1)].id);
-                }}><Trash2 size={15}/></button>}
+                }}><Trash2 size={15}/></IconButton>}
               </div>
             </div>
             {picker === category.id && <div className="category-icon-picker" role="group" aria-label={t('chooseCategoryIcon')}>
@@ -136,6 +137,6 @@ export function CategoryManager({ categories, initialIds, locale, busy, error, o
       <span className="sr-only" role="status">{announcement}</span>
     </div>
     {error && <p className="form-error category-error" role="alert">{error}</p>}
-    <footer className="modal-footer"><button type="button" className="button small category-add" disabled={busy || categories.length >= maxCategories} onClick={add}><Plus size={16}/>{t('newCategory')}</button><button type="button" className="button" onClick={onClose} disabled={busy}>{t('cancel')}</button><button type="submit" className="button primary" disabled={busy}>{busy ? <span className="spinner small-spinner"/> : <Check size={16}/ >}{busy ? t('saving') : t('save')}</button></footer>
+    <footer className="modal-footer"><Button small className="category-add" disabled={busy || categories.length >= maxCategories} onClick={add}><Plus size={16}/>{t('newCategory')}</Button><Button onClick={onClose} disabled={busy}>{t('cancel')}</Button><Button type="submit" variant="primary" disabled={busy}>{busy ? <span className="spinner small-spinner"/> : <Check size={16}/ >}{busy ? t('saving') : t('save')}</Button></footer>
   </form>;
 }

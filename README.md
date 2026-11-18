@@ -2,9 +2,16 @@
 
 A small desktop library for personal details, education, experience, research, contacts, and supporting documents. Folio uses Tauri 2, React, TypeScript, and SQLite to keep records and managed files on your computer. Its interface supports English and Simplified Chinese.
 
-[![Folio introduction: organize personal details, find and copy fields, manage files, and choose your appearance](docs/media/folio-preview.gif)](docs/media/folio-intro.mp4)
+[![Folio Field Guide, a complete animated tour of the personal library](docs/media/folio-preview.gif)](docs/media/folio-intro.mp4)
 
-**[Watch or download the full introduction](docs/media/folio-intro.mp4)**: 60.6 seconds, 2K (2560 × 1440), English titles with Chinese captions and original instrumental music. The right-hand window follows one uninterrupted operation from search and editing through image/PDF preview, file management, and appearance changes. The embedded 1080p GIF (1920 × 1080) shows the complete approximately 60-second tour at normal speed; a [static poster](docs/media/folio-poster.png) is also available. All records shown are fictional demonstration data captured in Folio 0.4.1. Built with [Remotion](https://github.com/remotion-dev/remotion); [storyboard](video/storyboard.md) and [source and reproduction instructions](video/README.md).
+Follow one fictional record from field search and copying through field insertion and ordering, drag-and-drop import, a pinned image and PDF viewer, custom collection icons, dark mode, and Chinese. Both films run for 60 seconds in 2560 × 1440 at 30 fps, with English and Chinese captions and original music. The full-length 1080p GIFs play at normal speed.
+
+| Film | Video | Animated preview |
+| --- | --- | --- |
+| Field Guide, made with Remotion | [Watch MP4](docs/media/folio-intro.mp4) | [Open GIF](docs/media/folio-preview.gif) |
+| Night Desk, made with HyperFrames | [Watch MP4](docs/media/folio-hyperframes.mp4) | [Open GIF](docs/media/folio-hyperframes.gif) |
+
+Open the comparison player from a local checkout to switch versions at the same timestamp. [Player](docs/media/index.html) / [Static poster](docs/media/folio-poster.png) / [Storyboard and rendering instructions](video/README.md)
 
 Download the Windows installer from [Folio v0.4.3](https://github.com/yangzhexian/folio/releases/tag/v0.4.3). The release also includes a portable desktop/CLI package, the agent skill, and file checksums.
 
@@ -116,33 +123,15 @@ Deleting a record or removing an attachment hides it from the library and offers
 
 **Restore backup** replaces the current library after confirmation and validates the archive before switching the active vault. The previous library is retained in a `previous-<uuid>` directory beside `vault`. Restoring is replacement rather than merging, and the interface does not automatically switch back to a recovery copy. Close Folio before manually working with its data directories, keep the existing `vault` under a different name, and copy the chosen recovery directory to `vault` if manual rollback is needed.
 
-The current backup format is version 1. Limits are 2 GiB per attachment, 10 GiB of total uncompressed archive content, a 32 MiB manifest, and 100,000 attachment entries. Export applies the same limits as restore. A missing or externally changed managed file can prevent a complete backup; reimport the correct source file before exporting. Recovery copies are intentionally retained and may consume additional disk space.
+The default catalog exports a version-1 manifest. Customized collections export version 2. Limits are 2 GiB per attachment, 10 GiB of total uncompressed archive content, a 32 MiB manifest, and 100,000 attachment entries. Export applies the same limits as restore. A missing or externally changed managed file can prevent a complete backup; reimport the correct source file before exporting. Recovery copies are intentionally retained and may consume additional disk space.
 
 ## Architecture
 
-| Area | Responsibility |
-| --- | --- |
-| `src/App.tsx` | Library navigation, record editing, file management, and settings |
-| `src/templates.ts` | Bilingual record templates and empty-record creation |
-| `src/i18n.ts` | English and Simplified Chinese interface text |
-| `src/domain.ts` | Search, localized labels, copy formatting, and file-size formatting |
-| `src/FieldEditor.tsx` / `src/fieldEditing.ts` | Pointer and keyboard field ordering and positional insertion |
-| `src/DatePicker.tsx` | Editable dates and an inline calendar with month/year navigation |
-| `src/sorting.ts` | Chronological and localized title ordering, stable ties, and saved preference validation |
-| `src/theme.ts` | Appearance preferences and theme application |
-| `src/useFileDrop.ts` | Native drop-event lifecycle and browser navigation protection |
-| `src/useExternalChanges.ts` | Deferred focus refresh and stale-snapshot rejection during external editing |
-| `src/api.ts` | Tauri command bridge and isolated in-memory browser preview |
-| `src/AttachmentPreview.tsx` / `src/PdfPreview.tsx` | Bilingual attachment viewer, bounded image/PDF rendering, navigation, and resource cleanup |
-| `src/PreviewWindowApp.tsx` / `src/previewWindow.ts` | Independent preview lifecycle, settings synchronization, and pinning |
-| `src-tauri/src/preview_window.rs` | Native preview creation, scoped session metadata, and window lifecycle |
-| `src-tauri/src/storage/preview.rs` | Active-file authorization, bounded binary reads, and format/dimension validation |
-| `src-tauri/src/cli.rs` / `src-tauri/src/storage/agent.rs` | Structured local CLI, non-overwriting creation, and revision-checked updates |
-| `skills/folio-data-entry/` | Agent workflow, input contract, and verification/retry guidance |
-| `src-tauri/src/` | SQLite persistence, native dialogs, attachment operations, and backup handling |
-| `src-tauri/capabilities/` | Native capabilities exposed to the application window |
-| `tests/*.e2e.ts` | Browser interface regression tests with synthetic records |
-| `video/` | Separate Remotion project, synthetic UI captures, and original soundtrack generation |
+The React main window owns library state and composes the navigation, editor and settings. The standalone attachment viewer has its own window lifecycle. Both use shared controls, theme tokens and bilingual action labels. The Tauri adapter and the local CLI call the same Rust store, which owns validation, revisions, SQLite transactions and managed files. See the [application map](docs/development/architecture.md), [UI conventions](docs/development/interface.md) and [storage contract](docs/development/storage.md).
+
+## Contributing to Folio
+
+Start with the [maintenance SOP](docs/development/README.md) for change-specific tests, compatibility checks and release steps. Coding agents can load the [Folio development skill](skills/folio-development/SKILL.md) directly or start from [AGENTS.md](AGENTS.md). Install the complete `skills/folio-development` folder in a harness's skills directory when working from an external skill catalog. Use the [data-entry skill](skills/folio-data-entry/SKILL.md) for managing records in a local library.
 
 ## Roadmap
 
@@ -160,23 +149,21 @@ Version 0.4.0 delivers the first attachment-preview milestone: PNG/JPG/JPEG and 
 
 ## Rebuilding the introduction
 
-The video has its own dependency lockfile and is not included in the desktop application bundle. From the repository root:
+The media project uses its own dependency lockfile. Build both films from the repository root.
 
 ```powershell
 npm ci --prefix video
 npm run video:render
 ```
 
-This generates the full MP4, README GIF preview, and poster in `docs/media/` from the checked-in synthetic captures. Use `npm run video:capture` after interface changes and `npm run video:studio` to edit the animation interactively. See [video/README.md](video/README.md) for browser prerequisites, checks, and the scene timeline.
+This produces the two MP4 masters, complete 1080p GIFs and poster from the checked-in synthetic session. Run `npm run video:capture` to record interface changes. Single-engine commands, local rendering prerequisites and comparison-player instructions are in the [media project guide](video/README.md).
 
 ## Checks
 
 ```powershell
-npm run build
-npm test
 npx playwright install chromium
-npm run test:e2e
-cargo test --manifest-path src-tauri/Cargo.toml
+npm run check
+npm run check:native
 ```
 
 If a managed Chromium download is unavailable, Playwright can use an installed Chrome browser instead:

@@ -17,6 +17,8 @@ The test suite uses synthetic values and temporary directories. It does not read
 
 Install browser support once with `npx playwright install chromium`. Playwright starts the Vite server on `http://127.0.0.1:1420`, or reuses an existing server outside CI. Each test gets an isolated browser context, and browser preview data resets on reload. Failed tests retain a screenshot and trace under `test-results/`; an HTML report is written to `playwright-report/`.
 
+Run `npm run check` for the complete core suite and `npm run check:native` for the isolated Windows desktop and CLI smoke suite. Set `FOLIO_TEST_PORT` to a free port when another checkout or recording owns port 1420. Parallel browser runs should also use different Playwright output and HTML report directories. The [maintenance SOP](development/README.md) specifies change-specific checks and release acceptance.
+
 If the browser download is blocked but Google Chrome is already installed, run these PowerShell commands:
 
 ```powershell
@@ -57,6 +59,10 @@ Ten backend CLI tests cover validation without initialization, duplicate/deleted
 Version 0.4.2 adds targeted field patches/deletion, revision-checked attachment rename/replacement/removal, read-only legacy attachment tokens, backup compatibility, and rollback after failed replacement. Tests verify stable IDs and field order, unrelated content and source-file preservation, retained recovery copies, occupied filenames, stale GUI revisions including already-deleted attachments, and invalid input without vault initialization. Five preview-window tests validate caller labels, canonical selection IDs, the fixed local route, active metadata scope/order, and missing-file error behavior.
 
 ## Latest recorded validation
+
+The maintenance branch was checked against v0.4.3 on November 18, 2026. The updated production frontend, 69 Vitest cases, 85 browser cases and 75 Rust regression cases passed. The separate Windows desktop smoke suite exercised 17 workflows and 41 CLI calls on an isolated vault. Performance results are recorded in the [frontend](benchmarks/frontend.md) and [backend](benchmarks/backend.md) reports.
+
+Two independent agents used disposable checkouts for a development-guidance trial. One started from the development skill and one from the root guide. Both added a bilingual, keyboard-accessible copy-title action and a boolean CLI list-summary field. Each used the shared controls and storage query owner, tested clipboard success and failure and covered empty, whitespace-only and populated notes through real CLI processes. The exercises kept the active library and product branch untouched. Concurrent trial runs exposed port contention and excessive file watching, which the repository's browser configuration now handles.
 
 For version 0.4.3 on 2026-11-11, all 67 frontend unit tests, 85 browser/interface tests, and 73 Rust tests passed. Production frontend compilation, Rust formatting, the video source type check, skill validation, and the normal desktop/NSIS build passed. The complete browser run used its own output directory after concurrent test reporters removed each other's temporary trace files during an earlier run; the final isolated-output run passed all 85 cases.
 

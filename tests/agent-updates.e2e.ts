@@ -15,7 +15,7 @@ const initialSnapshot = {
 
 async function openMockDesktop(page: Page, locale: 'en' | 'zh' = 'en') {
   await page.addInitScript(value => localStorage.setItem('folio.locale', value), locale);
-  await page.route('http://127.0.0.1:1420/', async route => {
+  await page.route('/', async route => {
     const response = await route.fetch();
     const html = await response.text();
     const bootstrap = `

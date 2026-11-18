@@ -29,32 +29,6 @@ impl Store {
         })
     }
 
-    pub fn agent_snapshot(&self) -> Result<Snapshot> {
-        let db = Connection::open_with_flags(
-            self.vault().join("folio.sqlite3"),
-            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-        )
-        .map_err(err)?;
-        db.busy_timeout(std::time::Duration::from_secs(5))
-            .map_err(err)?;
-        let records = read_records(&db)?;
-        let catalog = read_category_catalog(&db)?;
-        for record in &records {
-            require_category(&catalog.categories, &record.category)?;
-        }
-        let attachments = read_attachments(&db)?
-            .into_iter()
-            .map(|item| self.public_attachment(item))
-            .collect::<Result<_>>()?;
-        Ok(Snapshot {
-            records,
-            attachments,
-            data_dir: display_path(&self.root),
-            categories: catalog.categories,
-            categories_revision: catalog.revision,
-        })
-    }
-
     pub fn agent_create(&self, mut record: ProfileRecord) -> Result<ProfileRecord> {
         validate_record(&record)?;
         let mut db = self.connection()?;
@@ -92,16 +66,7 @@ impl Store {
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
             .map_err(err)?;
         require_registered_category(&tx, &record.category)?;
-        let body: Option<String> = tx
-            .query_row(
-                "SELECT body FROM records WHERE id=?1 AND deleted=0",
-                [&record.id],
-                |row| row.get(0),
-            )
-            .optional()
-            .map_err(err)?;
-        let previous: ProfileRecord =
-            serde_json::from_str(&body.ok_or("RECORD_NOT_FOUND")?).map_err(err)?;
+        let previous = find_record(&tx, &record.id)?.ok_or("RECORD_NOT_FOUND")?;
         if previous.updated_at != expected {
             return Err("RECORD_CONFLICT".into());
         }

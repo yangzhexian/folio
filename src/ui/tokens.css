@@ -1,0 +1,81 @@
+/* The default palette preserves Folio's original light sage appearance. */
+:root {
+  --control-radius: 6px;
+  --icon-radius: 5px;
+  --icon-control-size: 28px;
+  --control-font-size: 13px;
+  --focus-width: 2px;
+  --focus-offset: 3px;
+  --swatch-sage: #4d6b50;
+  --swatch-blue: #4269a3;
+  --swatch-violet: #7353a1;
+  --swatch-rose: #a34465;
+  --swatch-amber: #94641b;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  color: var(--text); background: var(--canvas); font-synthesis: none; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased;
+  color-scheme: light;
+  --canvas: #fff; --sidebar: #f7f8f6; --surface: #fafbf9; --text: #27312d; --muted: #65705f; --line: #e7eae5; --line-subtle: #f0f2ec;
+  --accent: var(--swatch-sage); --accent-strong: #355439; --accent-soft: #eaf0e7; --on-accent: #fff;
+  --focus: #718f70; --focus-border: #8aa287; --input-border: #dfe4dc; --placeholder: var(--muted);
+  --nav-text: var(--muted); --nav-hover: #edf0e9; --nav-selected: #e8eee3; --nav-selected-text: #3d573c; --nav-count: var(--nav-selected-text); --brand-dot: #6b8861;
+  --icon: #849078; --icon-hover: #edf2e8; --icon-surface: #ecefe8; --favorite: #918a63;
+  --hover: #f7f9f4; --selected: #f0f4ec; --selected-border: #e6ecdf; --tag-surface: #f3f6ee; --value-text: #53614b;
+  --button-border: #dde3d8; --button-text: #64715c; --button-hover: #f3f6f0; --button-hover-border: #cbd4c3; --button-shadow: #344c3420;
+  --kbd-surface: #f8f9f6; --kbd-border: #e6e9e1; --preview-surface: #f5f7f1;
+  --danger: #aa443c; --danger-hover: #92372f; --danger-border: #e8cfc8; --on-danger: #fff;
+  --overlay: #1e2c235c; --modal-shadow: #17241033; --toast-border: #dbe5d1; --toast-text: #617a4e; --toast-shadow: #253b1a20;
+  --category-identity: #768a60; --category-identity-surface: #e8eedf;
+  --category-education: #708695; --category-education-surface: #e7edf0;
+  --category-research: #8a8098; --category-research-surface: #eeebf1;
+  --category-experience: #96835d; --category-experience-surface: #f3eee4;
+  --category-awards: #968453; --category-awards-surface: #f3efdf;
+  --category-skills: #698a81; --category-skills-surface: #e6efea;
+  --category-contacts: #9d7d78; --category-contacts-surface: #f4eae7;
+  --category-documents: #7a8789; --category-documents-surface: #e9eff0;
+  --category-custom: #858676; --category-custom-surface: #eeeee6;
+}
+:root[data-accent="blue"] { --accent: var(--swatch-blue); --accent-strong: #335785; --accent-soft: #edf2fa; }
+:root[data-accent="violet"] { --accent: var(--swatch-violet); --accent-strong: #5d4088; --accent-soft: #f2edf8; }
+:root[data-accent="rose"] { --accent: var(--swatch-rose); --accent-strong: #893450; --accent-soft: #faedf1; }
+:root[data-accent="amber"] { --accent: var(--swatch-amber); --accent-strong: #785015; --accent-soft: #f8f1e4; }
+:root[data-accent]:not([data-accent="sage"]) {
+  --focus: var(--accent); --focus-border: color-mix(in srgb, var(--accent) 65%, var(--canvas));
+  --nav-hover: var(--accent-soft); --nav-selected: var(--accent-soft); --nav-selected-text: var(--accent-strong); --nav-count: var(--accent); --brand-dot: var(--accent);
+  --icon-hover: var(--accent-soft); --hover: color-mix(in srgb, var(--accent-soft) 55%, var(--canvas)); --selected: var(--accent-soft); --selected-border: color-mix(in srgb, var(--accent) 20%, var(--canvas));
+  --tag-surface: var(--accent-soft); --button-hover: var(--accent-soft); --button-hover-border: var(--focus-border); --toast-text: var(--accent-strong);
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #191e1b; --sidebar: #141915; --surface: #202722; --text: #e1e8df; --muted: #a5b1a3; --line: #354037; --line-subtle: #2c352e;
+  --accent: #a3c29a; --accent-strong: #bdd7b6; --accent-soft: #293b2c; --on-accent: #142416;
+  --focus: var(--accent); --focus-border: var(--accent); --input-border: #48554a; --placeholder: #879283;
+  --nav-text: #b6c1b1; --nav-hover: var(--surface); --nav-selected: var(--accent-soft); --nav-selected-text: var(--accent); --nav-count: var(--muted); --brand-dot: var(--accent);
+  --icon: #a3b29a; --icon-hover: var(--accent-soft); --icon-surface: #303a30; --favorite: #d4bc76;
+  --hover: #232c25; --selected: var(--accent-soft); --selected-border: #465c45; --tag-surface: var(--surface); --value-text: #d0dbca;
+  --button-border: #485348; --button-text: #c5d2be; --button-hover: var(--surface); --button-hover-border: #7c9071; --button-shadow: #00000020;
+  --kbd-surface: var(--surface); --kbd-border: var(--line); --preview-surface: var(--surface);
+  --danger: #ee9b92; --danger-hover: #f2b5ae; --danger-border: #744843; --on-danger: #331614;
+  --overlay: #070d0bb8; --modal-shadow: #00000070; --toast-border: #4d6346; --toast-text: #c4dbb9; --toast-shadow: #00000050;
+  --category-identity: #b2c89a; --category-identity-surface: #303c29;
+  --category-education: #abc6dc; --category-education-surface: #2b3742;
+  --category-research: #c6b5de; --category-research-surface: #3b3148;
+  --category-experience: #ddc393; --category-experience-surface: #443b29;
+  --category-awards: #e0ca8b; --category-awards-surface: #423b25;
+  --category-skills: #a3cdbf; --category-skills-surface: #293f36;
+  --category-contacts: #dcb9b3; --category-contacts-surface: #44332f;
+  --category-documents: #b8cbd0; --category-documents-surface: #2d3c40;
+  --category-custom: #c6c9b0; --category-custom-surface: #393c2e;
+}
+:root[data-theme="dark"][data-accent="blue"] { --accent: #9abdea; --accent-strong: #b6cff0; --accent-soft: #243448; --on-accent: #142235; }
+:root[data-theme="dark"][data-accent="violet"] { --accent: #c6afe8; --accent-strong: #dbc9f2; --accent-soft: #352c45; --on-accent: #271a39; }
+:root[data-theme="dark"][data-accent="rose"] { --accent: #e7abc1; --accent-strong: #f0c3d3; --accent-soft: #432a34; --on-accent: #351c26; }
+:root[data-theme="dark"][data-accent="amber"] { --accent: #dfbd7e; --accent-strong: #ecd2a3; --accent-soft: #3d3323; --on-accent: #2c2110; }
+:root[data-theme="dark"][data-accent]:not([data-accent="sage"]) {
+  --hover: color-mix(in srgb, var(--accent-soft) 55%, var(--canvas)); --selected-border: color-mix(in srgb, var(--accent) 35%, var(--canvas));
+  --button-hover-border: var(--accent); --toast-text: var(--accent); --toast-border: var(--selected-border);
+}
+.accent-swatch[data-swatch="sage"] { --swatch: var(--swatch-sage); }
+.accent-swatch[data-swatch="blue"] { --swatch: var(--swatch-blue); }
+.accent-swatch[data-swatch="violet"] { --swatch: var(--swatch-violet); }
+.accent-swatch[data-swatch="rose"] { --swatch: var(--swatch-rose); }
+.accent-swatch[data-swatch="amber"] { --swatch: var(--swatch-amber); }

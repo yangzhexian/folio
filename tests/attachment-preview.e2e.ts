@@ -1,3 +1,5 @@
+import { expectPdf } from './pdf-expect';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
@@ -36,7 +38,7 @@ async function openMockDesktop(page: Page, options: { locale?: 'en' | 'zh'; dark
     localStorage.setItem('folio.locale', locale);
     localStorage.setItem('folio.theme', dark ? 'dark' : 'light');
   }, { locale: options.locale ?? 'en', dark: options.dark ?? false });
-  await page.route('http://127.0.0.1:1420/', async route => {
+  await page.route('/', async route => {
     const response = await route.fetch();
     const html = await response.text();
     const bootstrap = `
@@ -154,7 +156,7 @@ test('switches PNG and JPEG attachments within the current record and opens unsu
   await dialog.getByRole('button', { name: 'Next attachment', exact: true }).click();
   await expect(dialog.locator('canvas.preview-pdf-canvas')).toBeVisible();
   await dialog.getByRole('button', { name: 'Next attachment', exact: true }).click();
-  await expect(dialog.getByRole('alert')).toBeVisible();
+  await expectPdf(dialog.getByRole('alert')).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Next attachment', exact: true })).toBeDisabled();
   expect(await commandIds(page, 'read_attachment_preview')).not.toContain('other');
   expect(await commandIds(page, 'read_attachment_preview')).not.toContain('text');
@@ -171,24 +173,31 @@ test('renders real PDF pages with local PDF.js, supports page navigation and zoo
   const canvas = dialog.locator('canvas.preview-pdf-canvas');
   const number = dialog.getByRole('spinbutton', { name: 'Page number', exact: true });
   await expect(canvas).toBeVisible();
-  await expect(canvas).toHaveAttribute('data-rendered-page', '1');
+  await expectPdf(canvas).toHaveAttribute('data-rendered-page', '1');
+  const worker = page.workers().find(worker => new URL(worker.url()).pathname.endsWith('/pdf.worker.min.mjs'));
+  expect(worker, 'PDF.js must render in its local dedicated worker').toBeDefined();
+  expect(new URL(worker!.url()).origin).toBe(new URL(page.url()).origin);
+  const response = await page.request.get(worker!.url());
+  expect(response.ok()).toBe(true);
+  const sha256 = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
+  expect(sha256(await response.body())).toBe(sha256(readFileSync(resolve('node_modules/pdfjs-dist/build/pdf.worker.min.mjs'))));
   await expect(number).toHaveValue('1');
   await expect(number).toHaveAttribute('max', '2');
   await expect(dialog.getByRole('button', { name: 'Previous page', exact: true })).toBeDisabled();
   const firstPage = await canvasFingerprint(canvas);
   await dialog.getByRole('button', { name: 'Next page', exact: true }).click();
   await expect(number).toHaveValue('2');
-  await expect(canvas).toHaveAttribute('data-rendered-page', '2');
+  await expectPdf(canvas).toHaveAttribute('data-rendered-page', '2');
   await expect.poll(() => canvasFingerprint(canvas)).not.toBe(firstPage);
   await expect(dialog.getByRole('button', { name: 'Next page', exact: true })).toBeDisabled();
   await dialog.getByRole('button', { name: 'Previous page', exact: true }).click();
   await expect(number).toHaveValue('1');
-  await expect(canvas).toHaveAttribute('data-rendered-page', '1');
+  await expectPdf(canvas).toHaveAttribute('data-rendered-page', '1');
   await expect.poll(() => canvasFingerprint(canvas)).toBe(firstPage);
   await number.fill('2');
   await number.press('Enter');
   await expect(number).toHaveValue('2');
-  await expect(canvas).toHaveAttribute('data-rendered-page', '2');
+  await expectPdf(canvas).toHaveAttribute('data-rendered-page', '2');
   await expect.poll(() => canvasFingerprint(canvas)).not.toBe(firstPage);
   const initialWidth = (await canvas.boundingBox())!.width;
   await dialog.getByRole('button', { name: 'Zoom in', exact: true }).click();
@@ -256,7 +265,7 @@ test('shows an actionable error for malformed PDFs and recovers when switching t
   const observed = await openMockDesktop(page);
   await openFile(page, 'identity_broken.pdf');
   const dialog = preview(page);
-  await expect(dialog.getByRole('alert')).toBeVisible();
+  await expectPdf(dialog.getByRole('alert')).toBeVisible();
   await expect(dialog.getByRole('alert')).toHaveText('This file could not be previewed. You can open it externally.');
   await expect(dialog.getByRole('button', { name: 'Open externally', exact: true })).toBeEnabled();
   await dialog.getByRole('button', { name: 'Open externally', exact: true }).click();
@@ -303,7 +312,7 @@ test('serializes rapid PDF page and zoom changes and cleans up when closed durin
   await openFile(page, 'identity_pages.pdf');
   const dialog = preview(page);
   const canvas = dialog.locator('canvas.preview-pdf-canvas');
-  await expect(canvas).toHaveAttribute('data-rendered-page', '1');
+  await expectPdf(canvas).toHaveAttribute('data-rendered-page', '1');
   const originalPage = await canvasFingerprint(canvas);
   // Actual keyboard input can arrive before the PDF.js render task has settled.
   for (let repeat = 0; repeat < 4; repeat++) {
@@ -318,7 +327,7 @@ test('serializes rapid PDF page and zoom changes and cleans up when closed durin
   await page.keyboard.press('Equal');
   await expect(dialog.getByRole('spinbutton', { name: 'Page number', exact: true })).toHaveValue('2');
   await expect(dialog.getByRole('status', { name: 'Zoom', exact: true })).toHaveText('175%');
-  await expect(canvas).toHaveAttribute('data-rendered-page', '2');
+  await expectPdf(canvas).toHaveAttribute('data-rendered-page', '2');
   await expect.poll(() => canvasFingerprint(canvas)).not.toBe(originalPage);
   await expect(dialog.locator('.preview-loading')).toBeHidden();
   await expect(dialog.getByRole('alert')).toHaveCount(0);
@@ -327,7 +336,7 @@ test('serializes rapid PDF page and zoom changes and cleans up when closed durin
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
   await openFile(page, 'identity_pages.pdf');
-  await expect(canvas).toHaveAttribute('data-rendered-page', '1');
+  await expectPdf(canvas).toHaveAttribute('data-rendered-page', '1');
   await expect(dialog.getByRole('status', { name: 'Zoom', exact: true })).toHaveText('100%');
   await expect.poll(() => canvasFingerprint(canvas)).toBe(originalPage);
   await expect(dialog.getByRole('alert')).toHaveCount(0);
@@ -359,7 +368,7 @@ for (const locale of ['en', 'zh'] as const) {
     await expect(dialog.getByRole('alert')).toHaveText(locale === 'en' ? 'This PDF requires a password. Open it externally to continue.' : '此 PDF 需要密码，请使用外部应用打开。');
     await page.evaluate(() => { delete (window as any).__folioPreviewTest.failures.pdf; });
     await dialog.getByRole('button', { name: locale === 'en' ? 'Try again' : '重试', exact: true }).click();
-    await expect(dialog.locator('canvas.preview-pdf-canvas')).toHaveAttribute('data-rendered-page', '1');
+    await expectPdf(dialog.locator('canvas.preview-pdf-canvas')).toHaveAttribute('data-rendered-page', '1');
     await expect(dialog.getByRole('alert')).toHaveCount(0);
     await page.keyboard.press('Escape');
     await expect.poll(() => page.evaluate(() => (window as any).__folioPreviewTest.activeUrls.length)).toBe(0);

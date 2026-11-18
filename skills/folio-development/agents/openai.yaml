@@ -1,0 +1,4 @@
+interface:
+  display_name: "Folio Development"
+  short_description: "Develop Folio with its shared maintenance SOP"
+  default_prompt: "Use $folio-development to implement this change in the Folio checkout and verify it through the affected entry points."

@@ -1,27 +1,20 @@
-# Folio continuous product tour
+# A minute in Folio
 
-The new film follows one uninterrupted session in the current Folio interface. The same application window, selection, cursor, edited record, and attachments persist throughout the demonstration. The right-hand demonstration is a real browser capture with synthetic records and local sample documents, not a sequence of replacement screenshots. Remotion provides the surrounding typography, bilingual captions, camera framing, opening, closing, and original music.
+Both films follow Alex Chen preparing a fictional academic record. The selected record, its field order, and its two attachments persist across every action. The opening occupies three seconds, the working session fills the next 54, and the last three return to the cover. Use the measured action times in `public/session/manifest.json` when editing captions.
 
-## Camera and continuity
+| Time | Action and visible result | Camera motivation |
+| --- | --- | --- |
+| 0–3 s | Open the Folio workspace. | Field Guide unfolds a file jacket. Night Desk follows the pointer to a dock icon and grows the window out of it. |
+| 3–6 s | Reveal the synthetic document number, then cover it again. | Settle on the active record while the eye control changes. |
+| 6–11 s | Type `QQ号`, copy the matched field, and clear the query. | Move towards the search input as the result appears. Hold long enough to see the copy confirmation. |
+| 11–21 s | Insert an Alias field under the full name, type its value, drag the new field to the top, and save. | Follow the editor into the centre, then pull back into the same record. |
+| 21–25 s | Drag the synthetic contact-card PNG onto the selected record. | Follow the incoming file into the actual drop target and hold on the new attachment. |
+| 25–28 s | Open the imported image and zoom in. | Grow the independent viewer from the attachment and let the card fill the reader. |
+| 28–33 s | Pin the viewer, drag its title bar, then select Education in the main window underneath. | Pull back to show the moving child, the changed background record, and the retained foreground. |
+| 33–38 s | Switch to the PDF and turn to its second page. | Ease into the document while retaining its toolbar. |
+| 38–41 s | Copy the PDF path and close the viewer. | Follow the pointer from the viewer controls back into the library. |
+| 41–49 s | Move Education to the top of the collection list, choose a book icon, rename it Learning, and save. | Move in on the ordered rows, then reveal the changed sidebar. |
+| 49–57 s | Return to the record, select dark mode, then switch to Chinese. | Leave room for the full workspace so the two changes are easy to compare. |
+| 57–60 s | Return to the cover. | Retrace the opening movement and resolve the original instrumental phrase. |
 
-Render at 2560 × 1440 and 30 fps. Begin with a brief brand introduction, then reveal the application window once. Keep that window anchored on the right while the explanatory text changes on the left. The camera makes small, eased moves within the same continuous recording: a closer view during search and field editing, a full-window view for attachment previews, then a gentle return for file actions and appearance. Do not fade, reset, or replace the application at chapter boundaries. The closing title grows over the final Chinese interface only after the demonstration finishes.
-
-The capture records at 1920 × 1200 with a readable application scale. A visible cursor travels smoothly before each real click; click rings, deliberate typing, scrolling, dragging, document rendering, and theme transitions are captured with the interface. Event times are written to the capture manifest so labels and camera moves use measured timing rather than guessed offsets. The application capture is decoded as a single continuous video throughout the full film.
-
-## Planned session
-
-| Approximate session time | Continuous action | Camera intent | Caption focus |
-| --- | --- | --- | --- |
-| 0–3 s | Establish the selected personal record and its attachments. | Reveal the whole window and settle. | One place for your details. |
-| 3–9 s | Move to search, type a field synonym, copy the matching value, and clear the search. | Slow push toward search and the selected record. | Find a field and reuse it. |
-| 9–19 s | Open Edit on that same record, scroll to fields, drag a field into place, edit a value, and save. | Follow the editor without cutting. | Your details, your order. |
-| 19–27 s | Open the record's PNG attachment, zoom, and return to fit. | Ease back to show the preview controls. | Preview images where they belong. |
-| 27–35 s | Switch directly to the next PDF attachment, turn a page, zoom, and fit. | Hold the same preview window. | From an image to a multipage document. |
-| 35–44 s | Close preview, enter Files, rename the same PDF, and copy its managed path. | Follow the cursor from preview back to the library. | Named clearly and ready to share. |
-| 44–52 s | Open Settings, switch to dark violet, close Settings, and switch the interface to Chinese. | Ease out to show the complete workspace. | A familiar workspace in either language. |
-
-The final duration may vary slightly with measured capture timing; there are no speed ramps between functional steps. Intro and outro add seven seconds to the measured session. The silent README preview now covers the complete film at normal playback speed, from the opening through search, editing, PNG and PDF previews, file actions, appearance, language switching, and the closing. It renders at 1920 × 1080 and 12 fps for approximately 60.7 seconds. The same time mapping drives the captured cursor, interface, camera, titles, and captions; there are no cuts or separate freezes between functions.
-
-## Content boundaries
-
-Use fictional names, values, a synthetic contact card, and a synthetic two-page PDF. Mock the native storage boundary only; the real frontend performs searching, editing, drag ordering, notifications, image decoding, PDF rendering, renaming UI, and appearance changes. Do not open a personal vault, invoke a default document application, or upload any files. Replace middle-dot separators in captions and demonstration data with ordinary commas, colons, hyphens, or brackets.
+The two treatments share every product action. Remotion uses a paper palette, serif captions, and physical index tabs. HyperFrames uses a blue-green desktop, a dock-launch gesture, and its own GSAP camera choreography. Each uses a macOS-style arrow and window chrome for presentation. The photographed interface is the shipped Folio frontend running against a synthetic IPC fixture, including the independent viewer entry point `/?view=preview`. Native title bars and desktop stacking are represented by the presentation shell. The fixture checks the actual drop command, saved field, category icon, pin state, and underlying selection, and provides in-memory PNG and PDF bytes. The original attachment files, credentials, and personal vaults on the recording machine are never inputs.

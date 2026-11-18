@@ -1,8 +1,15 @@
 import { categories, categoryLabels } from './templates';
-import type { Category, CategoryDefinition, Locale } from './types';
+import type { BuiltInCategory, Category, CategoryDefinition, Locale } from './types';
 
 export const categoryIconIds = ['user-round', 'graduation-cap', 'briefcase-business', 'flask-conical', 'award', 'badge-check', 'users', 'file-text', 'sliders-horizontal', 'folder', 'heart', 'house', 'car', 'plane', 'wallet', 'book-open', 'calendar', 'globe', 'laptop', 'music', 'camera', 'star', 'shield', 'building'] as const;
-export const defaultCategories: CategoryDefinition[] = categories.map((id, index) => ({ id, nameEn: categoryLabels[id].en, nameZh: categoryLabels[id].zh, icon: categoryIconIds[index] }));
+const defaultIcons: Record<BuiltInCategory, (typeof categoryIconIds)[number]> = {
+  identity: 'user-round', education: 'graduation-cap', experience: 'briefcase-business',
+  research: 'flask-conical', awards: 'award', skills: 'badge-check', contacts: 'users',
+  documents: 'file-text', custom: 'sliders-horizontal',
+};
+export const defaultCategories: CategoryDefinition[] = categories.map(id => ({
+  id, nameEn: categoryLabels[id].en, nameZh: categoryLabels[id].zh, icon: defaultIcons[id],
+}));
 export const defaultCategoriesRevision = 'builtin-v1';
 export const maxCategories = 100;
 

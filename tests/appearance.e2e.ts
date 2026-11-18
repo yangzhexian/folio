@@ -44,7 +44,11 @@ test('applies every accent in light and dark modes and supports the quick theme 
       });
       expect(centers.x).toBeLessThanOrEqual(0.5);
       expect(centers.y).toBeLessThanOrEqual(0.5);
-      renderedColors.add(await page.locator('.compact-create').evaluate(node => getComputedStyle(node).backgroundColor));
+      const actionColor = await page.locator('.compact-create').evaluate(node => getComputedStyle(node).backgroundColor);
+      const swatchColor = await settings.getByRole('button', { name: accent, exact: true }).locator('.accent-swatch').evaluate(node => getComputedStyle(node).backgroundColor);
+      expect(swatchColor).not.toBe('rgba(0, 0, 0, 0)');
+      if (mode === 'Light') expect(swatchColor).toBe(actionColor);
+      renderedColors.add(actionColor);
     }
     expect(renderedColors.size).toBe(5);
   }

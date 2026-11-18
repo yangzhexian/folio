@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy, PDFWorker, RenderTask } from 'pdfjs-dist';
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 type PdfLibrary = typeof import('pdfjs-dist');
 
@@ -45,9 +44,9 @@ export default function PdfPreview({ data, page, zoom, viewport, onPageCount, on
       try {
         const library = await import('pdfjs-dist');
         if (!active) return;
-        library.GlobalWorkerOptions.workerSrc = workerUrl;
-        worker = new library.PDFWorker();
         const assets = new URL(`${import.meta.env.BASE_URL}pdfjs-assets/`, window.location.href).href;
+        library.GlobalWorkerOptions.workerSrc = `${assets}pdf.worker.min.mjs`;
+        worker = new library.PDFWorker();
         loadingTask = library.getDocument({
           // PDF.js transfers ownership to its worker. Keep the parent's bytes intact for remounts.
           data: data.slice(),
