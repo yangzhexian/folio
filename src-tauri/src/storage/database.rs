@@ -21,13 +21,13 @@ impl Store {
         fs::create_dir_all(vault.join("attachments")).map_err(err)?;
         let db = Connection::open(vault.join("folio.sqlite3")).map_err(err)?;
         db.busy_timeout(SQLITE_BUSY_TIMEOUT).map_err(err)?;
-        db.execute_batch(
+        db.execute_batch(concat!(
             "PRAGMA foreign_keys = ON;
              PRAGMA journal_mode = DELETE;
              PRAGMA synchronous = FULL;",
-        )
+            include_str!("schema.sql"),
+        ))
         .map_err(err)?;
-        db.execute_batch(include_str!("schema.sql")).map_err(err)?;
         Ok(db)
     }
 }

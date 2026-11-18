@@ -20,6 +20,22 @@ fn backend_workloads() {
             .import_files(&saved.id, &[sample.clone(), sample.clone()])
             .unwrap();
     }
+    if std::env::var_os("FOLIO_BENCH_IMPORT_BATCH").is_some() {
+        let record_id = Uuid::from_u128(RECORDS as u128).to_string();
+        let mut timings = Vec::new();
+        for i in 0..=8 {
+            let start = Instant::now();
+            store
+                .import_files(&record_id, std::slice::from_ref(&sample))
+                .unwrap();
+            let elapsed = start.elapsed().as_secs_f64() * 1000.0;
+            if i > 0 {
+                timings.push(elapsed);
+            }
+        }
+        println!("FOLIO_SAMPLE {}", serde_json::json!({"import": timings}));
+        return;
+    }
     let backup = temp.path().join("benchmark.zip");
     let restored = Store::open(temp.path().join("restored")).unwrap();
     let mut snapshots = Vec::new();

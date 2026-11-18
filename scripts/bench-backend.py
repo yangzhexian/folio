@@ -132,10 +132,14 @@ def measure(root, binaries, size, samples, operations):
         raise RuntimeError("A read operation changed the synthetic database")
 
 
-def measure_stores(runners, samples):
+def measure_stores(runners, samples, import_only):
     labels = ["baseline", "candidate"]
     results = {label: {} for label in labels}
     environment = {**os.environ, "FOLIO_BENCH_SINGLE_SAMPLE": "1"}
+    if import_only:
+        environment["FOLIO_BENCH_IMPORT_BATCH"] = "1"
+    else:
+        environment.pop("FOLIO_BENCH_IMPORT_BATCH", None)
     for index in range(samples):
         paired = list(zip(labels, runners))
         if index % 2:
@@ -147,13 +151,18 @@ def measure_stores(runners, samples):
             )
             sample = next(line for line in output.splitlines() if line.startswith("FOLIO_SAMPLE "))
             for operation, elapsed in json.loads(sample.removeprefix("FOLIO_SAMPLE ")).items():
-                results[label].setdefault(operation, []).append(elapsed)
-    print("operation    build       median(ms)    p95(ms)")
-    for operation in ["snapshot", "backup", "restore", "import"]:
+                values = results[label].setdefault(operation, [])
+                if import_only:
+                    values.extend(elapsed)
+                else:
+                    values.append(elapsed)
+    print("operation    build         samples median(ms)    p95(ms)")
+    for operation in results["baseline"]:
         for label in labels:
             values = results[label][operation]
-            p95 = sorted(values)[math.ceil(samples * 0.95) - 1]
-            print(f"{operation:12} {label:10} {statistics.median(values):10.2f} {p95:10.2f}")
+            p95 = sorted(values)[math.ceil(len(values) * 0.95) - 1]
+            print(f"{operation:12} {label:10} {len(values):7} "
+                  f"{statistics.median(values):10.2f} {p95:10.2f}")
 
 
 def main():
@@ -168,12 +177,16 @@ def main():
                         default=["info", "list", "get"])
     parser.add_argument("--store-runners", type=Path, nargs=2, metavar=("BASELINE", "CANDIDATE"),
                         help="Compare two Rust unit-test executables built with the same storage benchmark")
+    parser.add_argument("--store-import-only", action="store_true",
+                        help="Measure eight warm 4 KiB imports per store runner in each paired round")
     args = parser.parse_args()
     if min(args.sizes) < 1 or args.samples < 1:
         parser.error("Sizes and sample count must be positive")
     if args.store_runners:
-        measure_stores(args.store_runners, args.samples)
+        measure_stores(args.store_runners, args.samples, args.store_import_only)
         return
+    if args.store_import_only:
+        parser.error("--store-import-only requires --store-runners")
     binaries = {}
     if args.baseline:
         binaries["baseline"] = args.baseline.resolve(strict=True)

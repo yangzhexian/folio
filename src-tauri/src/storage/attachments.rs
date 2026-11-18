@@ -40,6 +40,7 @@ impl Store {
         }
         let mut db = self.connection()?;
         let record = require_record(&db, record_id)?;
+        let vault = self.vault().canonicalize().map_err(err)?;
         let tx = db.transaction().map_err(err)?;
         let mut created = Vec::new();
         let result = (|| {
@@ -62,19 +63,20 @@ impl Store {
                     safe_extension(source).as_deref(),
                 );
                 let relative_path = format!("attachments/{record_id}/{file_name}");
-                let destination = self.safe_destination(&relative_path)?;
-                fs::create_dir_all(
-                    destination
-                        .parent()
-                        .ok_or("Invalid attachment directory.")?,
-                )
-                .map_err(err)?;
+                let destination = Self::safe_destination_in(&vault, &relative_path)?;
                 let mut input = File::open(source).map_err(err)?;
-                let mut output = OpenOptions::new()
-                    .write(true)
-                    .create_new(true)
-                    .open(&destination)
-                    .map_err(err)?;
+                let mut options = OpenOptions::new();
+                options.write(true).create_new(true);
+                let mut output = match options.open(&destination) {
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                        let parent = destination
+                            .parent()
+                            .ok_or("Invalid attachment directory.")?;
+                        fs::create_dir_all(parent).map_err(err)?;
+                        options.open(&destination).map_err(err)?
+                    }
+                    result => result.map_err(err)?,
+                };
                 created.push(destination.clone());
                 let size = std::io::copy(
                     &mut Read::by_ref(&mut input).take(MAX_FILE_SIZE + 1),
@@ -105,7 +107,7 @@ impl Store {
                     ],
                 )
                 .map_err(err)?;
-                attachments.push(self.public_attachment(attachment)?);
+                attachments.push(Self::public_attachment_in(&vault, attachment)?);
             }
             tx.commit().map_err(err)?;
             Ok(attachments)
@@ -241,16 +243,23 @@ impl Store {
         let path = vault.join(relative);
         // Reject redirected parents (symlinks and Windows junctions) before writing.
         let mut ancestor = path.parent().ok_or("Invalid file path.")?;
-        while !ancestor.exists() {
-            ancestor = ancestor.parent().ok_or("Invalid file path.")?;
+        loop {
+            match ancestor.canonicalize() {
+                Ok(actual) if actual.starts_with(vault) => break,
+                Ok(_) => return Err("Attachment path escapes the local vault.".into()),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    ancestor = ancestor.parent().ok_or("Invalid file path.")?;
+                }
+                Err(error) => return Err(err(error)),
+            }
         }
-        if !ancestor.canonicalize().map_err(err)?.starts_with(vault) {
-            return Err("Attachment path escapes the local vault.".into());
+        match path.canonicalize() {
+            Ok(actual) if !actual.starts_with(vault) => {
+                Err("Attachment path escapes the local vault.".into())
+            }
+            Err(error) if error.kind() != std::io::ErrorKind::NotFound => Err(err(error)),
+            _ => Ok(path),
         }
-        if path.exists() && !path.canonicalize().map_err(err)?.starts_with(vault) {
-            return Err("Attachment path escapes the local vault.".into());
-        }
-        Ok(path)
     }
 
     pub(super) fn resolve_existing(&self, relative: &str) -> Result<PathBuf> {
