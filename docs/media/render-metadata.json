@@ -3,8 +3,7 @@
   "source": "video/public/session/continuous.mp4",
   "sourceDurationSeconds": 54,
   "versions": {
-    "remotion": "4.0.538",
-    "hyperframes": "0.9.65"
+    "remotion": "4.0.538"
   },
   "files": [
     {
@@ -16,18 +15,7 @@
       "frameRate": 30,
       "videoCodec": "h264",
       "audioCodec": "aac",
-      "bytes": 12616634
-    },
-    {
-      "name": "folio-hyperframes.mp4",
-      "width": 2560,
-      "height": 1440,
-      "frames": 1800,
-      "durationSeconds": 60,
-      "frameRate": 30,
-      "videoCodec": "h264",
-      "audioCodec": "aac",
-      "bytes": 14489112
+      "bytes": 11504698
     },
     {
       "name": "folio-preview.gif",
@@ -38,18 +26,7 @@
       "frameRate": 12,
       "videoCodec": "gif",
       "audioCodec": null,
-      "bytes": 39964757
-    },
-    {
-      "name": "folio-hyperframes.gif",
-      "width": 1920,
-      "height": 1080,
-      "frames": 720,
-      "durationSeconds": 60,
-      "frameRate": 12,
-      "videoCodec": "gif",
-      "audioCodec": null,
-      "bytes": 43710314
+      "bytes": 36284836
     }
   ]
 }

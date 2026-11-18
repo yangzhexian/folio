@@ -4,16 +4,11 @@ A small desktop library for personal details, education, experience, research, c
 
 [![Folio Field Guide, a complete animated tour of the personal library](docs/media/folio-preview.gif)](docs/media/folio-intro.mp4)
 
-Follow one fictional record from field search and copying through field insertion and ordering, drag-and-drop import, a pinned image and PDF viewer, custom collection icons, dark mode, and Chinese. Both films run for 60 seconds in 2560 × 1440 at 30 fps, with English and Chinese captions and original music. The full-length 1080p GIFs play at normal speed.
+Follow one fictional record through a field search, drag-and-drop import, a pinned image and PDF viewer, and custom collections. The 60-second Remotion film has centered English and Chinese captions and an original soundtrack. [Watch the 2K film](docs/media/folio-intro.mp4) or [open the complete 1080p GIF](docs/media/folio-preview.gif).
 
-| Film | Video | Animated preview |
-| --- | --- | --- |
-| Field Guide, made with Remotion | [Watch MP4](docs/media/folio-intro.mp4) | [Open GIF](docs/media/folio-preview.gif) |
-| Night Desk, made with HyperFrames | [Watch MP4](docs/media/folio-hyperframes.mp4) | [Open GIF](docs/media/folio-hyperframes.gif) |
+[Video player](docs/media/index.html) / [Poster](docs/media/folio-poster.png) / [Storyboard and rendering instructions](video/README.md)
 
-Open the comparison player from a local checkout to switch versions at the same timestamp. [Player](docs/media/index.html) / [Static poster](docs/media/folio-poster.png) / [Storyboard and rendering instructions](video/README.md)
-
-Download the Windows installer from [Folio v0.4.3](https://github.com/yangzhexian/folio/releases/tag/v0.4.3). The release also includes a portable desktop/CLI package, the agent skill, and file checksums.
+Download the Windows installer from [Folio v0.4.4](https://github.com/yangzhexian/folio/releases/tag/v0.4.4). The release also includes a portable desktop/CLI package, the agent skill, and file checksums.
 
 ## Features
 
@@ -149,14 +144,14 @@ Version 0.4.0 delivers the first attachment-preview milestone: PNG/JPG/JPEG and 
 
 ## Rebuilding the introduction
 
-The media project uses its own dependency lockfile. Build both films from the repository root.
+The Remotion project uses its own dependency lockfile. Build the film from the repository root.
 
 ```powershell
 npm ci --prefix video
 npm run video:render
 ```
 
-This produces the two MP4 masters, complete 1080p GIFs and poster from the checked-in synthetic session. Run `npm run video:capture` to record interface changes. Single-engine commands, local rendering prerequisites and comparison-player instructions are in the [media project guide](video/README.md).
+This produces the 2K MP4, complete 1080p GIF, poster and timed captions from the checked-in synthetic session. Run `npm run video:capture` to record interface changes. Local prerequisites and verification commands are in the [media guide](video/README.md).
 
 ## Checks
 

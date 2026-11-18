@@ -79,7 +79,7 @@ const snapshot = {
           'document',
           'Document number',
           '证件号码',
-          'DEMO-000000',
+          'Demo-000000',
           'text',
           true,
         ),
@@ -89,7 +89,7 @@ const snapshot = {
     record(
       '00000000-0000-4000-8000-000000000102',
       'education',
-      'MSc: Computer Science',
+      'MSc in computer science',
       'Example University, 2023-2026',
       [field('degree', 'Degree', '学位', 'Master of Science')],
     ),
@@ -132,7 +132,7 @@ function syntheticPdf() {
     const line = (text, x, y, size, white = false) => {
       stream += `${white ? '1 1 1' : '0.15 0.23 0.19'} rg BT /F1 ${size} Tf ${x} ${y} Td (${text}) Tj ET\n`;
     };
-    line('EXAMPLE UNIVERSITY', 48, 733, 20, true);
+    line('Example University', 48, 733, 20, true);
     line(
       page === 1 ? 'Certificate of completion' : 'Academic transcript',
       48,
@@ -142,19 +142,19 @@ function syntheticPdf() {
     );
     line('Alex Chen', 48, 605, 38);
     line(page === 1 ? 'Master of Science' : 'Course summary', 48, 550, 24);
-    line('Computer Science, Class of 2026', 48, 512, 16);
+    line('Computer science, class of 2026', 48, 512, 16);
     if (page === 1) {
       line('Completed on 15 July 2026', 48, 440, 16);
       line('Awarded for curiosity, craft, and persistence.', 48, 390, 15);
     } else
       [
-        'Human-Computer Interaction             A',
-        'Data Systems                                   A',
-        'Research Methods                            A-',
-        'Design Studio                                  A',
-        'Final Thesis                                     A',
+        'Human computer interaction             A',
+        'Data systems                                   A',
+        'Research methods                            A-',
+        'Design studio                                  A',
+        'Final thesis                                     A',
       ].forEach((text, i) => line(text, 48, 444 - i * 43, 16));
-    line('FICTIONAL DOCUMENT FOR FOLIO DEMONSTRATION', 48, 80, 9);
+    line('Fictional document for the Folio demonstration', 48, 80, 9);
     line(`Page ${page} of 2`, 48, 55, 10);
     return stream;
   };
@@ -239,7 +239,7 @@ try {
   const art = await context.newPage();
   await art.setViewportSize({ width: 1200, height: 800 });
   await art.setContent(
-    '<html><body style="margin:0;background:#dfe8d8;padding:70px;font-family:Segoe UI;color:#244536"><div style="background:#f9faf5;padding:64px;border-radius:30px;height:530px;box-sizing:border-box"><div style="font-size:22px;letter-spacing:5px">FOLIO / CONTACT CARD</div><h1 style="font-size:76px;margin:32px 0 20px">Alex Chen</h1><p style="font-size:26px">alex.chen@example.com</p><p style="font-size:26px">Shanghai, China</p><p style="font-size:22px;margin-top:36px">Design. Research. Everyday details.</p><p style="font-size:12px;margin-top:40px;color:#6a806e">FICTIONAL EXAMPLE FOR FOLIO PRODUCT DEMONSTRATION</p></div></body></html>',
+    '<html><body style="margin:0;background:#dfe8d8;padding:70px;font-family:Segoe UI;color:#244536"><div style="background:#f9faf5;padding:64px;border-radius:30px;height:530px;box-sizing:border-box"><div style="font-size:22px;letter-spacing:1px">Folio contact card</div><h1 style="font-size:76px;margin:32px 0 20px">Alex Chen</h1><p style="font-size:26px">alex.chen@example.com</p><p style="font-size:26px">Shanghai, China</p><p style="font-size:22px;margin-top:36px">Design and research</p><p style="font-size:12px;margin-top:40px;color:#6a806e">Fictional contact for the Folio demonstration</p></div></body></html>',
   );
   const png = await art.screenshot({
     path: path.join(output, 'contact-card.png'),
@@ -353,7 +353,7 @@ try {
       const viewer = document.createElement('div');
       viewer.id = 'tour-viewer';
       viewer.innerHTML =
-        '<header><button aria-label="Close preview window"></button><i></i><i></i><span>Folio Preview</span></header><iframe title="Folio Preview" src="/?view=preview"></iframe>';
+        '<header><button aria-label="Close preview window"></button><i></i><i></i><span>Folio preview</span></header><iframe title="Folio preview" src="/?view=preview"></iframe>';
       document.body.append(viewer);
       viewer.querySelector('button').onclick = () => viewer.remove();
       const titlebar = viewer.querySelector('header');
@@ -396,6 +396,7 @@ try {
     .frameLocator('#tour-viewer iframe')
     .locator('canvas[data-rendered-page="1"]')
     .waitFor({ state: 'attached', timeout: 60000 });
+  if ((await page.locator('.sidebar .brand').innerText()).trim() !== 'Folio') throw new Error('The captured sidebar must use the Folio wordmark.');
   await page.evaluate(() => document.fonts.ready);
   await wait(500);
   await page.screenshot({ path: path.join(output, 'opening.png') });
@@ -636,7 +637,7 @@ try {
     page.locator('.sidebar .nav-item').filter({ hasText: 'Education' }),
   );
   await page
-    .getByRole('heading', { name: 'MSc: Computer Science', exact: true })
+    .getByRole('heading', { name: 'MSc in computer science', exact: true })
     .waitFor();
   await pinned.waitFor();
   await at(30);
@@ -756,7 +757,7 @@ try {
         viewer: {
           pinned: true,
           dragged: true,
-          backgroundRecord: 'MSc: Computer Science',
+          backgroundRecord: 'MSc in computer science',
           pdfPage: 2,
         },
         firstCollection: final.categories[0],

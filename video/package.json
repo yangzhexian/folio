@@ -9,18 +9,16 @@
     "studio": "remotion studio src/index.tsx --public-dir=public",
     "typecheck": "tsc --noEmit",
     "stills": "node scripts/render.mjs --stills",
-    "render": "node scripts/audio.mjs && node scripts/render.mjs && node scripts/exports.mjs remotion && node scripts/hyperframes.mjs && node scripts/exports.mjs hyperframes && node scripts/verify.mjs --update",
+    "render": "node scripts/audio.mjs && node scripts/render.mjs && node scripts/exports.mjs && node scripts/verify.mjs --update",
     "refresh": "npm run capture && npm run render",
     "verify": "node scripts/verify.mjs",
-    "render:remotion": "node scripts/audio.mjs && node scripts/render.mjs && node scripts/exports.mjs remotion",
-    "render:hyperframes": "node scripts/audio.mjs && node scripts/hyperframes.mjs && node scripts/exports.mjs hyperframes"
+    "render:remotion": "npm run render"
   },
   "dependencies": {
     "@remotion/bundler": "4.0.538",
     "@remotion/cli": "4.0.538",
     "@remotion/renderer": "4.0.538",
-    "gsap": "3.14.2",
-    "hyperframes": "0.9.65",
+    "lucide-react": "0.468.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "remotion": "4.0.538"

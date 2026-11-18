@@ -2,92 +2,92 @@
   {
     "id": "opening",
     "start": 0,
-    "label": "Folio",
-    "en": "Your field guide to personal details.",
-    "zh": "把常用资料放在手边。"
+    "label": "Introduction",
+    "en": "Keep personal details within reach",
+    "zh": "把常用资料放在手边"
   },
   {
     "id": "organize",
     "start": 3,
-    "label": "Privacy",
-    "en": "Reveal the details you need.",
-    "zh": "按需显示敏感字段。"
+    "label": "Sensitive fields",
+    "en": "Show sensitive fields when needed",
+    "zh": "在需要时显示敏感字段"
   },
   {
     "id": "search",
     "start": 6.3,
-    "label": "Find",
-    "en": "Search a field. Copy its value.",
-    "zh": "直接搜索字段，复制匹配的值。"
+    "label": "Field search",
+    "en": "Find a field and copy its value",
+    "zh": "查找字段并复制对应的值"
   },
   {
     "id": "edit",
     "start": 11.3,
-    "label": "Arrange",
-    "en": "Insert a field, then drag it into place.",
-    "zh": "在指定位置插入字段，拖动调整顺序。"
+    "label": "Field order",
+    "en": "Add a field and drag it into place",
+    "zh": "新增字段并拖到合适的位置"
   },
   {
     "id": "import",
     "start": 21.4,
-    "label": "Attach",
-    "en": "Drop a file onto its record.",
-    "zh": "拖入图片，归档到当前条目。"
+    "label": "File import",
+    "en": "Drop an image onto the record",
+    "zh": "将图片拖入当前条目"
   },
   {
     "id": "image",
     "start": 24.7,
-    "label": "Preview",
-    "en": "Open the image and zoom in.",
-    "zh": "在独立窗口中打开图片并放大。"
+    "label": "Image preview",
+    "en": "Open the image and zoom in",
+    "zh": "打开图片并放大查看"
   },
   {
     "id": "pin",
     "start": 27.6,
-    "label": "Pin",
-    "en": "Keep the viewer above your work.",
-    "zh": "置顶并移动预览窗，继续操作主窗口。"
+    "label": "Pin window",
+    "en": "Pin the viewer and keep working",
+    "zh": "置顶预览窗后继续操作主窗口"
   },
   {
     "id": "pdf",
     "start": 33,
-    "label": "Read",
-    "en": "Turn the page without leaving Folio.",
-    "zh": "切换到 PDF，继续翻页阅读。"
+    "label": "PDF preview",
+    "en": "Switch to the PDF and turn the page",
+    "zh": "切换到 PDF 并翻页阅读"
   },
   {
     "id": "files",
     "start": 38,
-    "label": "Reuse",
-    "en": "Copy the managed document path.",
-    "zh": "复制正在预览的文件路径。"
+    "label": "File path",
+    "en": "Copy the document path",
+    "zh": "复制文档的保存路径"
   },
   {
     "id": "collections",
     "start": 41.5,
-    "label": "Collect",
-    "en": "Give a collection its own icon.",
-    "zh": "调整分类顺序、更换图标和名称。"
+    "label": "Collections",
+    "en": "Choose a new icon for the collection",
+    "zh": "为分类选择新图标"
   },
   {
     "id": "appearance",
     "start": 51,
     "label": "Appearance",
-    "en": "Carry your workspace into dark mode.",
-    "zh": "切换深色外观，保留当前工作区。"
+    "en": "Switch the workspace to dark mode",
+    "zh": "将工作区切换到深色模式"
   },
   {
     "id": "language",
     "start": 53.5,
     "label": "Language",
-    "en": "Switch languages in place.",
-    "zh": "中英文界面，一键切换。"
+    "en": "Switch between English and Chinese",
+    "zh": "切换中英文界面"
   },
   {
     "id": "closing",
     "start": 57,
-    "label": "Folio",
-    "en": "Everything in its place.",
-    "zh": "个人资料，各得其所。"
+    "label": "Library",
+    "en": "Keep your details and files together",
+    "zh": "将个人资料和文件收在一起"
   }
 ]

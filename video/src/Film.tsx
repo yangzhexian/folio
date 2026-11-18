@@ -1,4 +1,20 @@
 import {
+  BookOpen,
+  LibraryBig,
+  Copy,
+  FileText,
+  Folders,
+  Image,
+  Languages,
+  ListOrdered,
+  Moon,
+  Paperclip,
+  Pin,
+  Search,
+  ShieldCheck,
+  type LucideIcon,
+} from 'lucide-react';
+import {
   AbsoluteFill,
   Audio,
   Img,
@@ -10,6 +26,22 @@ import {
 import story from './story.json';
 import session from '../public/session/manifest.json';
 import './film.css';
+
+const chapterIcons: Record<string, LucideIcon> = {
+  opening: BookOpen,
+  organize: ShieldCheck,
+  search: Search,
+  edit: ListOrdered,
+  import: Paperclip,
+  image: Image,
+  pin: Pin,
+  pdf: FileText,
+  files: Copy,
+  collections: Folders,
+  appearance: Moon,
+  language: Languages,
+  closing: LibraryBig,
+};
 
 const smooth = (t: number) => {
   const v = Math.max(0, Math.min(1, t));
@@ -41,23 +73,24 @@ export function FolioFilm() {
   const scale =
     0.22 + 0.78 * screen + 0.29 * search + 0.12 * edit + 0.235 * file;
   const cue = steps.filter((c) => c.start <= time).at(-1)!;
-  const caption = smooth((time - cue.start) / 0.48);
-  const book = Math.max(1 - tween(time, 0.65, 1.75), departure);
+  const ChapterIcon = chapterIcons[cue.id];
+  const book = Math.max(1 - tween(time, 0.55, 0.8), tween(time, 58.05, 0.8));
   return (
     <AbsoluteFill className="film">
       <Audio src={staticFile('audio/folio.wav')} volume={0.82} />
       <div className="canvas">
         <div className="ruled" />
         <header className="mast">
-          <b>
-            folio<span>.</span>
-          </b>
-          <span>DESKTOP FIELD GUIDE</span>
+          <b>Folio</b>
+          <div className="chapter">
+            <ChapterIcon size={30} strokeWidth={1.8} aria-hidden="true" />
+            <span>{cue.label}</span>
+          </div>
         </header>
         <div className="tabs" style={{ opacity: 1 - 0.65 * screen }}>
-          {['01', '02', '03'].map((n, i) => (
+          {[0, 1, 2].map((i) => (
             <i
-              key={n}
+              key={i}
               style={{
                 transform:
                   'translateY(' +
@@ -66,9 +99,7 @@ export function FolioFilm() {
                   (i - 1) * (3 + book * 6) +
                   'deg)',
               }}
-            >
-              {n}
-            </i>
+            />
           ))}
         </div>
         <div
@@ -78,62 +109,44 @@ export function FolioFilm() {
             transform: 'translateY(' + (1 - book) * -32 + 'px)',
           }}
         >
-          <small>PERSONAL INFORMATION LIBRARY</small>
-          <strong>
-            Folio<span>.</span>
-          </strong>
-          <em>
-            {time < 30
-              ? 'A field guide to your details'
-              : 'Everything in its place'}
-          </em>
+          <strong>Folio</strong>
         </div>
-        <div
-          className="mac"
-          style={{
-            opacity: screen,
-            transform:
-              'translate(' + moveX + 'px,' + moveY + 'px) scale(' + scale + ')',
-          }}
-        >
-          <div className="chrome">
-            <i />
-            <i />
-            <i />
-            <b>Folio</b>
-          </div>
-          <div className="display">
-            {frame < 90 && <Img src={staticFile('session/opening.png')} />}
-            <Sequence from={90} durationInFrames={1620} layout="none">
-              <OffthreadVideo
-                src={staticFile('session/continuous.mp4')}
-                muted
-              />
-            </Sequence>
-            {frame >= 1710 && <Img src={staticFile('session/closing.png')} />}
-          </div>
-        </div>
-        <footer>
+        <div className="stage">
           <div
-            className="chapter"
+            className="mac"
             style={{
-              opacity: caption,
-              transform: 'translateY(' + (1 - caption) * 10 + 'px)',
+              opacity: smooth((screen - 0.12) / 0.88),
+              transform:
+                'translate(' +
+                moveX +
+                'px,' +
+                moveY +
+                'px) scale(' +
+                scale +
+                ')',
             }}
           >
-            <i />
-            {cue.label}
-          </div>
-          <div className="captions" style={{ opacity: caption }}>
-            <strong>{cue.en}</strong>
-            <span>{cue.zh}</span>
-          </div>
-          <div className="meter">
-            {Math.floor(time).toString().padStart(2, '0')} / 60
-            <div>
-              <b style={{ width: (time / 60) * 100 + '%' }} />
+            <div className="chrome">
+              <i />
+              <i />
+              <i />
+              <b>Folio</b>
+            </div>
+            <div className="display">
+              {frame < 90 && <Img src={staticFile('session/opening.png')} />}
+              <Sequence from={90} durationInFrames={1620} layout="none">
+                <OffthreadVideo
+                  src={staticFile('session/continuous.mp4')}
+                  muted
+                />
+              </Sequence>
+              {frame >= 1710 && <Img src={staticFile('session/closing.png')} />}
             </div>
           </div>
+        </div>
+        <footer className="captions">
+          <strong lang="en">{cue.en}</strong>
+          <span lang="zh-CN">{cue.zh}</span>
         </footer>
       </div>
     </AbsoluteFill>
