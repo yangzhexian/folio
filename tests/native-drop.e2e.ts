@@ -21,7 +21,7 @@ const initialSnapshot = {
 async function openMockDesktop(page: Page, empty = false, externalOnly = false) {
   const snapshot = empty ? { ...initialSnapshot, records: [], attachments: [] } : structuredClone(initialSnapshot);
   if (externalOnly) snapshot.attachments = snapshot.attachments.map(file => ({ ...file, fileName: file.fileName.replace(/\.pdf$/, '.txt') }));
-  await page.route('http://127.0.0.1:1420/', async route => {
+  await page.route('/', async route => {
     const response = await route.fetch();
     const html = await response.text();
     const bootstrap = `

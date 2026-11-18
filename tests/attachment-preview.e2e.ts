@@ -36,7 +36,7 @@ async function openMockDesktop(page: Page, options: { locale?: 'en' | 'zh'; dark
     localStorage.setItem('folio.locale', locale);
     localStorage.setItem('folio.theme', dark ? 'dark' : 'light');
   }, { locale: options.locale ?? 'en', dark: options.dark ?? false });
-  await page.route('http://127.0.0.1:1420/', async route => {
+  await page.route('/', async route => {
     const response = await route.fetch();
     const html = await response.text();
     const bootstrap = `

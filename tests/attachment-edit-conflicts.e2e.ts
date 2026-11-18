@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 async function openDesktop(page: Page, locale: string) {
   await page.addInitScript(language => localStorage.setItem('folio.locale', language), locale);
-  await page.route('http://127.0.0.1:1420/', async route => {
+  await page.route('/', async route => {
     const response = await route.fetch();
     const bootstrap = `
       import { mockIPC, mockWindows } from '/node_modules/@tauri-apps/api/mocks.js';

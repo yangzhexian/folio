@@ -16,7 +16,8 @@ async function boot(page: Page, child = true, options: { blockReads?: boolean; p
   page.on('pageerror', error => errors.push(error.message));
   page.on('request', request => { const url = new URL(request.url()); if (url.protocol.startsWith('http') && !['127.0.0.1', 'localhost'].includes(url.hostname)) remote.push(request.url()); });
   await page.addInitScript(() => { localStorage.setItem('folio.locale', 'en'); });
-  await page.route(/http:\/\/127\.0\.0\.1:1420\/(?:\?view=preview)?$/, async route => {
+  const origin = new URL(test.info().project.use.baseURL!).origin;
+  await page.route(url => url.origin === origin && url.pathname === '/' && ['', '?view=preview'].includes(url.search), async route => {
     const response = await route.fetch();
     const bootstrap = `<script type="module">
       import {mockIPC,mockWindows} from '/node_modules/@tauri-apps/api/mocks.js';

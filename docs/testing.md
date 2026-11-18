@@ -17,6 +17,8 @@ The test suite uses synthetic values and temporary directories. It does not read
 
 Install browser support once with `npx playwright install chromium`. Playwright starts the Vite server on `http://127.0.0.1:1420`, or reuses an existing server outside CI. Each test gets an isolated browser context, and browser preview data resets on reload. Failed tests retain a screenshot and trace under `test-results/`; an HTML report is written to `playwright-report/`.
 
+Run `npm run check` for the complete core suite and `npm run check:native` for the isolated Windows desktop and CLI smoke suite. Set `FOLIO_TEST_PORT` to a free port when another checkout or recording owns port 1420. Parallel browser runs should also use different Playwright output and HTML report directories. The [maintenance SOP](development/README.md) specifies change-specific checks and release acceptance.
+
 If the browser download is blocked but Google Chrome is already installed, run these PowerShell commands:
 
 ```powershell

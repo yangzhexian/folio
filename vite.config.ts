@@ -1,7 +1,8 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import { defineConfig, type Plugin } from 'vite';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, normalizePath, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
 // Keep PDF fonts and decoders beside the app in both development and packaged builds.
@@ -56,7 +57,18 @@ function localPdfAssets(): Plugin {
 export default defineConfig({
   plugins: [react(), localPdfAssets()],
   clearScreen: false,
-  server: { host: '127.0.0.1', port: 1420, strictPort: true },
+  // Only the app entry belongs to this Vite instance. Cargo output and disposable
+  // native/benchmark worktrees can otherwise add hundreds of thousands of watch paths.
+  optimizeDeps: { entries: ['index.html'] },
+  server: {
+    host: '127.0.0.1',
+    port: 1420,
+    strictPort: true,
+    watch: {
+      ignored: ['artifacts', 'src-tauri', 'video', 'test-results', 'playwright-report'].map(directory =>
+        normalizePath(fileURLToPath(new URL(directory, import.meta.url))) + '/**'),
+    },
+  },
   envPrefix: ['VITE_', 'TAURI_ENV_*'],
   build: { target: 'es2022' },
 });

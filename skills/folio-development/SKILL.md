@@ -17,4 +17,4 @@ Open `docs/development/interface.md` for controls, copy, themes and keyboard beh
 
 ## Hand off
 
-Run focused checks for the affected entry points, then the applicable repository checks from the SOP. Use isolated synthetic vaults for tests. Report the behavior exercised, measured outcomes and any native or hosted checks still pending. Group finished changes into independently verifiable English Conventional Commits.
+Run focused checks for the affected entry points, then the applicable repository checks from the SOP. Use isolated synthetic vaults for tests. For concurrent checkouts, set `FOLIO_TEST_PORT` to a free port for that checkout so its browser tests use its own application. Report the behavior exercised, measured outcomes and any native or hosted checks still pending. Group finished changes into independently verifiable English Conventional Commits.
