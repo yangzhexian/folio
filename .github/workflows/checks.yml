@@ -1,0 +1,47 @@
+name: Folio checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - id: scope
+        run: node scripts/ci-scope.mjs
+      - run: npm ci
+      - run: npx playwright install chromium
+      - run: npm run check
+      - if: steps.scope.outputs.native == 'true'
+        run: npm run desktop:build
+      - if: steps.scope.outputs.native == 'true'
+        name: Verify a synthetic upgrade on the disposable runner
+        shell: pwsh
+        run: |
+          $previous = Join-Path $env:RUNNER_TEMP 'folio-previous.exe'
+          Invoke-WebRequest 'https://github.com/yangzhexian/folio/releases/download/v0.4.3/Folio_0.4.3_x64-setup.exe' -OutFile $previous
+          if ((Get-FileHash $previous -Algorithm SHA256).Hash -ne '2b111c852c5ee133458565bad75e2889116ee388bbcffcceefc8aa45058215fd') { throw 'Baseline installer checksum mismatch' }
+          $candidate = Get-ChildItem 'src-tauri/target/release/bundle/nsis/*-setup.exe' -File
+          if ($candidate.Count -ne 1) { throw 'Expected exactly one candidate installer' }
+          ./scripts/check-upgrade.ps1 -PreviousInstaller $previous -CandidateInstaller $candidate.FullName
+      - if: steps.scope.outputs.native == 'true'
+        run: npm run check:native
+      - if: steps.scope.outputs.media == 'true'
+        run: npm ci --prefix video
+      - if: steps.scope.outputs.media == 'true'
+        run: npm run video:check
+      - if: steps.scope.outputs.media == 'true'
+        run: npm run verify --prefix video

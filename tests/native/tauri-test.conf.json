@@ -1,0 +1,8 @@
+{
+  "identifier": "dev.folio.native-smoke",
+  "app": {
+    "appDirectoriesOverride": "./webview-data",
+    "windows": [{ "label": "main", "title": "Folio native smoke", "width": 1280, "height": 820, "minWidth": 900, "minHeight": 620, "visible": false, "focus": false, "theme": "Light", "dragDropEnabled": true }]
+  },
+  "bundle": { "active": false }
+}
