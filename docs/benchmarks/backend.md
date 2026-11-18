@@ -26,16 +26,23 @@ SQLite's query plan showed one record scan and an `attachment_record` index sear
 
 ### Rust storage operations
 
-Both stores ran the same benchmark in the Cargo test profile. Each of the 21 paired samples used 128 records, 256 managed 4 KiB attachments and one warm-up. Every sample started with its own temporary library. The runner alternated which build ran first. These measurements cover store work inside the Rust process.
+Both stores ran the same benchmark in the Cargo test profile. This table compares v0.4.3 with the final store in `61a11b1`. Each of the 21 paired samples used 128 records, 256 managed 4 KiB attachments and one warm-up. Every sample started with its own temporary library. The runner alternated which build ran first. These measurements cover store work inside the Rust process.
 
 | Operation | Median, v0.4.3 (ms) | Median, candidate (ms) | p95, v0.4.3 (ms) | p95, candidate (ms) |
 | --- | ---: | ---: | ---: | ---: |
-| Desktop snapshot | 202.62 | 167.68 | 416.62 | 331.71 |
-| Export backup | 557.15 | 466.05 | 955.09 | 904.01 |
-| Restore backup | 872.35 | 865.13 | 1,421.69 | 1,365.31 |
-| Import one 4 KiB file | 13.91 | 13.26 | 17.97 | 23.46 |
+| Desktop snapshot | 49.29 | 26.45 | 87.39 | 42.43 |
+| Export backup | 167.50 | 131.61 | 280.32 | 180.89 |
+| Restore backup | 576.22 | 500.66 | 866.45 | 869.10 |
+| Import one 4 KiB file after restore | 8.87 | 7.61 | 11.44 | 9.01 |
 
-Small-file import has an open tail-latency check. Its p95 increased by 5.49 ms (30.6%) while its median improved by 0.65 ms. Concurrent media production contributed host load, and earlier runs grouped by binary showed substantial variation across all four operations. Repeat the paired measurement on an idle machine before attributing the import tail difference to the refactor.
+During the initial refactor, small-file import after restore showed a p95 increase from 17.97 to 23.46 ms while its median improved by 0.65 ms. The focused check below isolated steady-state imports. It seeded equivalent libraries for both builds, warmed the operation once, timed eight 4 KiB file imports per library, and alternated the build order across 15 paired rounds. Concurrent host activity varied between runs. Compare the two builds within each row.
+
+| Focused import, 120 samples per build | Median, v0.4.3 (ms) | Median, candidate (ms) | p95, v0.4.3 (ms) | p95, candidate (ms) |
+| --- | ---: | ---: | ---: | ---: |
+| Initial refactor | 8.61 | 8.80 | 15.87 | 17.68 |
+| After reducing filesystem probes in `61a11b1` | 6.97 | 6.85 | 8.48 | 8.08 |
+
+The follow-up shares the canonical vault root across the import batch, checks existence and containment together when resolving paths, and creates a record's attachment directory on first use. Every destination remains subject to vault containment checks, exclusive creation and file synchronization before the metadata transaction commits.
 
 ## Reproducing the comparison
 
@@ -64,4 +71,5 @@ function Get-StoreRunner($manifest) {
 $baselineTests = Get-StoreRunner ../folio-baseline/src-tauri/Cargo.toml
 $candidateTests = Get-StoreRunner src-tauri/Cargo.toml
 python scripts/bench-backend.py --store-runners $baselineTests $candidateTests --samples 21
+python scripts/bench-backend.py --store-runners $baselineTests $candidateTests --samples 15 --store-import-only
 ```
