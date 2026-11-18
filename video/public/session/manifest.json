@@ -6,58 +6,58 @@
   "uiScale": 1.3333333333333333,
   "fps": 30,
   "duration": 54,
-  "observedFrames": 1821,
+  "observedFrames": 1792,
   "encodedFrames": 1620,
   "cues": [
     {
       "id": "organize",
-      "time": 0.051
+      "time": 0.064
     },
     {
       "id": "search",
-      "time": 3.311
+      "time": 3.315
     },
     {
       "id": "edit",
-      "time": 8.304
+      "time": 8.312
     },
     {
       "id": "import",
-      "time": 18.404
+      "time": 18.409
     },
     {
       "id": "image",
-      "time": 21.708
+      "time": 21.703
     },
     {
       "id": "pin",
-      "time": 24.613
+      "time": 24.615
     },
     {
       "id": "pdf",
-      "time": 30.009
+      "time": 30.01
     },
     {
       "id": "files",
-      "time": 35.006
+      "time": 35.005
     },
     {
       "id": "collections",
-      "time": 38.51
+      "time": 38.504
     },
     {
       "id": "appearance",
-      "time": 48
+      "time": 48.003
     },
     {
       "id": "language",
-      "time": 50.505
+      "time": 50.5
     }
   ],
   "data": "Fictional records and locally generated PNG/PDF only. One continuous actual frontend session.",
   "verification": {
     "fieldOrder": [
-      "d44e8089-893b-41ca-a517-4db2c666555b",
+      "8cd4b13c-814f-44c5-9967-53fb49baa02d",
       "full-name",
       "email",
       "qq",
@@ -73,7 +73,7 @@
     "viewer": {
       "pinned": true,
       "dragged": true,
-      "backgroundRecord": "MSc: Computer Science",
+      "backgroundRecord": "MSc in computer science",
       "pdfPage": 2
     },
     "firstCollection": {
