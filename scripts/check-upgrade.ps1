@@ -39,6 +39,12 @@ $null = Invoke-Folio @('attach','--record-id',$recordId,'--input',$inputFile)
 $before = Invoke-Folio @('get','--id',$recordId)
 $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $before.attachments[0].absolutePath).Hash
 Install-Folio $CandidateInstaller
+$built = Join-Path $PSScriptRoot '../src-tauri/target/release'
+foreach ($file in 'folio.exe','folio-cli.exe') {
+  $installedHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $install $file)).Hash
+  $candidateHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $built $file)).Hash
+  if ($installedHash -ne $candidateHash) { throw "Installed $file differs from the candidate build." }
+}
 $after = Invoke-Folio @('get','--id',$recordId)
 $version = (Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot '../package.json') | ConvertFrom-Json).version
 if ((Invoke-Folio @('info')).version -ne $version -or $after.record.updatedAt -ne $before.record.updatedAt -or
