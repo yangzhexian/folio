@@ -44,4 +44,12 @@ jobs:
       - if: steps.scope.outputs.media == 'true'
         run: npm run video:check
       - if: steps.scope.outputs.media == 'true'
+        name: Install media probes
+        shell: pwsh
+        run: |
+          if (-not ((Get-Command ffmpeg -ErrorAction SilentlyContinue) -and (Get-Command ffprobe -ErrorAction SilentlyContinue))) {
+            choco install ffmpeg -y --no-progress
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - if: steps.scope.outputs.media == 'true'
         run: npm run verify --prefix video

@@ -16,8 +16,8 @@ const folder = 'docs/development';
 const guides = ['AGENTS.md', 'README.md', ...((await readdir(path.join(root, folder))).filter(f => f.endsWith('.md')).map(f => path.join(folder, f)))];
 for (const skill of ['folio-development', 'folio-data-entry']) {
   const guide = `skills/${skill}/SKILL.md`;
-  const src = await read(guide);
-  assert(src.startsWith(`---\nname: ${skill}\ndescription: `) || src.replaceAll('\r\n', '\n').startsWith(`---\nname: ${skill}\ndescription: `), `Invalid skill metadata in ${guide}`);
+  const src = (await read(guide)).replaceAll('\r\n', '\n');
+  assert(src.startsWith(`---\nname: ${skill}\ndescription: `), `Invalid skill metadata in ${guide}`);
   guides.push(guide);
 }
 for (const file of guides) {
