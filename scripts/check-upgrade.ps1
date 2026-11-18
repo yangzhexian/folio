@@ -1,6 +1,7 @@
 param(
   [Parameter(Mandatory)][string]$PreviousInstaller,
-  [Parameter(Mandatory)][string]$CandidateInstaller
+  [Parameter(Mandatory)][string]$CandidateInstaller,
+  [string]$SevenZip = '7z'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -25,6 +26,11 @@ function Invoke-Folio([string[]]$CliArgs) {
   return ($response | ConvertFrom-Json).data
 }
 
+# Tauri stamps the bundle type into the packaged desktop image and restores the
+# standalone binary after bundling. Compare against the bytes shipped in NSIS.
+$candidatePayload = Join-Path $workspace 'candidate-payload'
+& $SevenZip e -y "-o$candidatePayload" (Resolve-Path -LiteralPath $CandidateInstaller).Path folio.exe folio-cli.exe | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'Unable to extract the candidate executable payloads.' }
 Install-Folio $PreviousInstaller
 $recordId = [guid]::NewGuid().ToString()
 $recordFile = Join-Path $workspace 'record.json'
@@ -42,11 +48,10 @@ $null = Invoke-Folio @('attach','--record-id',$recordId,'--input',$inputFile)
 $before = Invoke-Folio @('get','--id',$recordId)
 $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $before.attachments[0].absolutePath).Hash
 Install-Folio $CandidateInstaller
-$built = Join-Path $PSScriptRoot '../src-tauri/target/release'
 foreach ($file in 'folio.exe','folio-cli.exe') {
   $installedHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $install $file)).Hash
-  $candidateHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $built $file)).Hash
-  if ($installedHash -ne $candidateHash) { throw "Installed $file differs from the candidate build." }
+  $candidateHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $candidatePayload $file)).Hash
+  if ($installedHash -ne $candidateHash) { throw "Installed $file differs from the candidate installer payload." }
 }
 $after = Invoke-Folio @('get','--id',$recordId)
 $pair = @{ before=$before.record; after=$after.record } | ConvertTo-Json -Depth 12 -Compress
