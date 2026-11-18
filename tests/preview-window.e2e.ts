@@ -1,3 +1,4 @@
+import { expectPdf } from './pdf-expect';
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -86,15 +87,15 @@ test('standalone viewer loads scoped metadata, pins, resizes, flips PDF pages, a
   await expect(viewer.getByRole('button', { name: 'Stop keeping on top', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await viewer.getByRole('button', { name: 'Next attachment', exact: true }).click();
   const canvas = viewer.locator('.preview-pdf-canvas');
-  await expect(canvas).toHaveAttribute('data-rendered-page', '1');
+  await expectPdf(canvas).toHaveAttribute('data-rendered-page', '1');
   await expect(page.getByRole('button', { name: 'Close', exact: true })).toHaveCount(0);
   await viewer.getByRole('button', { name: 'Next page', exact: true }).click();
-  await expect(canvas).toHaveAttribute('data-rendered-page', '2');
+  await expectPdf(canvas).toHaveAttribute('data-rendered-page', '2');
   await viewer.getByRole('button', { name: 'Zoom in', exact: true }).click();
   await expect(viewer.getByRole('status', { name: 'Zoom', exact: true })).toHaveText('125%');
   await page.setViewportSize({ width: 600, height: 420 });
   for (const button of await viewer.getByRole('button').all()) await expect(button).toBeInViewport();
-  await expect(canvas).toHaveAttribute('data-rendered-page', '2');
+  await expectPdf(canvas).toHaveAttribute('data-rendered-page', '2');
   await viewer.getByRole('button', { name: 'Stop keeping on top', exact: true }).click();
   await expect(viewer.getByRole('button', { name: 'Keep on top', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await page.keyboard.press('Escape');
@@ -117,7 +118,7 @@ test('a new request reuses the viewer and refreshes selected scope without stori
     state.session = { ...state.session, revision: 2, id: state.session.files[1].id, files: [state.session.files[1]] };
   });
   await signal(page);
-  await expect(viewer.locator('.preview-pdf-canvas')).toHaveAttribute('data-rendered-page', '1');
+  await expectPdf(viewer.locator('.preview-pdf-canvas')).toHaveAttribute('data-rendered-page', '1');
   await expect(viewer.getByRole('status', { name: 'Zoom', exact: true })).toHaveText('100%');
   await expect(viewer.getByRole('button', { name: 'Next attachment', exact: true })).toBeDisabled();
   await expect(viewer.getByRole('button', { name: 'Previous attachment', exact: true })).toBeDisabled();
