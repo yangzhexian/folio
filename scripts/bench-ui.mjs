@@ -93,11 +93,13 @@ try {
     const { records, attachments } = fixture(size);
     const prepare = () => projector(domain, defaultCategories, records, attachments);
     const browse = () => prepare()('', 'all');
+    const firstQuery = () => prepare()('手机号 group-03', 'all');
     const project = prepare();
     const queryBatch = () => queries.reduce((sum, [query, view]) => sum + project(query, view), 0);
     browse();
+    firstQuery();
     queryBatch();
-    console.log(JSON.stringify({ revision: ref ?? 'working-tree', size, unit: 'ms', samples: 11, browse: measure(browse, 11), queryBatch: measure(queryBatch, 11) }));
+    console.log(JSON.stringify({ revision: ref ?? 'working-tree', size, unit: 'ms', samples: 11, browse: measure(browse, 11), firstQuery: measure(firstQuery, 11), queryBatch: measure(queryBatch, 11) }));
   }
 } finally {
   await server?.close();
