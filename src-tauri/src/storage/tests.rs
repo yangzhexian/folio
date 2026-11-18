@@ -4,6 +4,8 @@ use super::*;
 use tempfile::TempDir;
 use zip::write::SimpleFileOptions;
 
+mod benchmark;
+
 fn record() -> ProfileRecord {
     ProfileRecord {
         id: Uuid::new_v4().to_string(),
