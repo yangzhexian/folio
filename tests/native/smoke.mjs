@@ -1,9 +1,8 @@
 import { chromium, expect } from '@playwright/test';
 import { spawn, spawnSync } from 'node:child_process';
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createServer } from 'node:net';
 import { randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { verifyCategories } from './categories.mjs';
@@ -61,14 +60,13 @@ const png = attachments.find(file => file.originalName === 'landscape.png');
 const jpg = attachments.find(file => file.originalName === 'portrait.jpg');
 const pdf = attachments.find(file => file.originalName === 'two-pages.pdf');
 
-const port = await new Promise((resolve, reject) => {
-  const server = createServer();
-  server.once('error', reject);
-  server.listen(0, '127.0.0.1', () => { const selected = server.address().port; server.close(() => resolve(selected)); });
-});
+const profile = path.join(runDirectory, 'webview-data', 'EBWebView');
+const childEnv = { ...process.env };
+// Both windows use the browser arguments and per-run profile from the smoke build.
+delete childEnv.WEBVIEW2_USER_DATA_FOLDER;
+delete childEnv.WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS;
 const child = spawn(executable, [], {
-  cwd: runDirectory, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
-  env: { ...process.env, WEBVIEW2_USER_DATA_FOLDER: path.join(runDirectory, 'webview-data'), WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port} --disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows` },
+  cwd: runDirectory, env: childEnv, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
 });
 let processOutput = '';
 child.stdout.on('data', value => { processOutput += value; });
@@ -150,14 +148,29 @@ async function selectInPreview(file) {
 }
 
 try {
-  let endpoint;
-  for (let attempt = 0; attempt < 120; attempt++) {
-    if (child.exitCode !== null) throw new Error(`Folio exited early: ${processOutput}`);
-    try { const response = await fetch(`http://127.0.0.1:${port}/json/version`); if (response.ok) { endpoint = await response.json(); break; } } catch {}
+  // WebView2 chooses a free loopback port and publishes it with this browser's endpoint.
+  const portFile = path.join(profile, 'DevToolsActivePort');
+  const deadline = Date.now() + 90_000;
+  while (Date.now() < deadline) {
+    if (child.exitCode !== null || child.signalCode || !child.pid) {
+      throw new Error(`Folio exited before WebView2 started (code ${child.exitCode}, signal ${child.signalCode}): ${processOutput}`);
+    }
+    let contents = '';
+    try { contents = await readFile(portFile, 'utf8'); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+    const [port, route] = contents.trim().split(/\r?\n/);
+    if (/^\d+$/.test(port) && /^\/devtools\/browser\/[\w-]+$/.test(route)) {
+      browser = await chromium.connectOverCDP(`ws://127.0.0.1:${port}${route}`, { timeout: 15_000 });
+      break;
+    }
     await pause(250);
   }
-  assert(endpoint?.webSocketDebuggerUrl, `WebView2 CDP unavailable: ${processOutput}`);
-  browser = await chromium.connectOverCDP(endpoint.webSocketDebuggerUrl);
+  if (!browser) {
+    const profileEntries = await readdir(profile).catch(error => [error.code]);
+    const windows = osWindows().map(win => win.title);
+    throw new Error(`WebView2 did not publish ${portFile} within 90s. Folio PID ${child.pid}, windows ${JSON.stringify(windows)}, profile entries ${JSON.stringify(profileEntries)}, output ${processOutput}`);
+  }
+  results.webviewVersion = browser.version();
   context = browser.contexts()[0];
   context.on('page', observe);
   await context.route('**/*', route => {
