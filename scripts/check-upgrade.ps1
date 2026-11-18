@@ -28,8 +28,11 @@ function Invoke-Folio([string[]]$CliArgs) {
 Install-Folio $PreviousInstaller
 $recordId = [guid]::NewGuid().ToString()
 $recordFile = Join-Path $workspace 'record.json'
-$record = @{ id=$recordId; title='Synthetic upgrade record'; category='identity'; fields=@() }
-[System.IO.File]::WriteAllText($recordFile, ($record | ConvertTo-Json), $utf8)
+$record = @{
+  id=$recordId; title='Synthetic upgrade record'; category='identity'; notes='Migration fixture'; tags=@('upgrade')
+  fields=@(@{ id='reference'; label='Reference'; labelZh='编号'; value='SYNTHETIC-043'; kind='text'; sensitive=$true })
+}
+[System.IO.File]::WriteAllText($recordFile, ($record | ConvertTo-Json -Depth 8), $utf8)
 $null = Invoke-Folio @('create','--input',$recordFile)
 $source = Join-Path $workspace 'synthetic.txt'
 [System.IO.File]::WriteAllText($source, 'Synthetic attachment for upgrade verification.', $utf8)
@@ -46,8 +49,11 @@ foreach ($file in 'folio.exe','folio-cli.exe') {
   if ($installedHash -ne $candidateHash) { throw "Installed $file differs from the candidate build." }
 }
 $after = Invoke-Folio @('get','--id',$recordId)
+$pair = @{ before=$before.record; after=$after.record } | ConvertTo-Json -Depth 12 -Compress
+$pair | node -e "const pair=JSON.parse(require('node:fs').readFileSync(0,'utf8')); require('node:assert/strict').deepEqual(pair.after,pair.before);"
+if ($LASTEXITCODE -ne 0) { throw 'The installed upgrade changed the saved record.' }
 $version = (Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot '../package.json') | ConvertFrom-Json).version
-if ((Invoke-Folio @('info')).version -ne $version -or $after.record.updatedAt -ne $before.record.updatedAt -or
+if ((Invoke-Folio @('info')).version -ne $version -or
     $after.attachments[0].absolutePath -ne $before.attachments[0].absolutePath -or
     (Get-FileHash -Algorithm SHA256 -LiteralPath $after.attachments[0].absolutePath).Hash -ne $hash) {
   throw 'Upgrade changed the record, path or bytes, or installed the wrong CLI.'
