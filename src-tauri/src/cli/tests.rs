@@ -130,6 +130,13 @@ fn legacy_schema_and_catalog_reads_do_not_migrate_or_rewrite_database() {
     let before = fs::read(&path).unwrap();
     let schema = run(&root, &["schema"], &Value::Null).unwrap();
     let categories = run(&root, &["categories"], &Value::Null).unwrap();
+    let id = input()["id"].as_str().unwrap().to_owned();
+    for options in [vec!["list"], vec!["get", "--id", &id]] {
+        assert_eq!(
+            run(&root, &options, &Value::Null).unwrap()["data"]["categoriesRevision"],
+            "builtin-v1"
+        );
+    }
     assert_eq!(schema["data"]["categoriesRevision"], "builtin-v1");
     assert_eq!(
         schema["data"]["categories"],
@@ -140,6 +147,56 @@ fn legacy_schema_and_catalog_reads_do_not_migrate_or_rewrite_database() {
         9
     );
     assert_eq!(fs::read(&path).unwrap(), before);
+}
+
+#[test]
+fn indexed_cli_reads_match_snapshot_order_counts_and_active_attachments() {
+    let temp = TempDir::new().unwrap();
+    let root = temp.path().join("data");
+    let store = Store::open(root.clone()).unwrap();
+    let mut ids = Vec::new();
+    let source = temp.path().join("fixture.pdf");
+    fs::write(&source, b"synthetic").unwrap();
+    for title in ["First", "Hidden", "Last"] {
+        let mut item = input();
+        item["id"] = uuid::Uuid::new_v4().to_string().into();
+        item["title"] = title.into();
+        let id = item["id"].as_str().unwrap();
+        run(&root, &["create", "--input", "-"], &item).unwrap();
+        let imported = store
+            .import_files(id, &[source.clone(), source.clone(), source.clone()])
+            .unwrap();
+        store.remove_attachment(&imported[1].metadata.id).unwrap();
+        ids.push(id.to_owned());
+    }
+    store.delete_record(&ids[1]).unwrap();
+    let snapshot = store.snapshot().unwrap();
+    let list = run(&root, &["list"], &Value::Null).unwrap();
+    let rows = list["data"]["records"].as_array().unwrap();
+    assert_eq!(rows.len(), 2);
+    for (summary, record) in rows.iter().zip(&snapshot.records) {
+        let attachments: Vec<_> = snapshot
+            .attachments
+            .iter()
+            .filter(|a| a.metadata.record_id == record.id)
+            .collect();
+        assert_eq!(
+            summary,
+            &json!({
+                "id": record.id, "title": record.title, "category": record.category,
+                "updatedAt": record.updated_at, "fieldCount": record.fields.len(), "attachmentCount": 2
+            })
+        );
+        let detail = run(&root, &["get", "--id", &record.id], &Value::Null).unwrap();
+        assert_eq!(detail["data"]["attachments"], json!(attachments));
+        assert_eq!(detail["data"]["record"], json!(record));
+    }
+    assert_eq!(
+        run(&root, &["get", "--id", &ids[1]], &Value::Null)
+            .unwrap_err()
+            .code,
+        "RECORD_NOT_FOUND"
+    );
 }
 
 #[test]

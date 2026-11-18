@@ -1,6 +1,7 @@
 use super::*;
 use serde_json::{json, Value};
 use tempfile::TempDir;
+use zip::write::SimpleFileOptions;
 
 fn custom() -> CategoryDefinition {
     CategoryDefinition {
@@ -62,9 +63,8 @@ fn default_and_legacy_catalog_reads_do_not_write_database() {
     let before = fs::read(store.vault().join("folio.sqlite3")).unwrap();
     let legacy = Store::agent_existing(store.root.clone()).unwrap();
     assert_eq!(legacy.agent_categories().unwrap(), builtin_catalog());
-    let snapshot = legacy.agent_snapshot().unwrap();
-    assert_eq!(snapshot.categories, builtin_categories());
-    assert_eq!(snapshot.categories_revision, "builtin-v1");
+    let (_, catalog) = legacy.agent_list().unwrap();
+    assert_eq!(catalog, builtin_catalog());
     assert_eq!(
         before,
         fs::read(store.vault().join("folio.sqlite3")).unwrap()
@@ -388,5 +388,6 @@ fn migration_rejects_unregistered_record_references_without_publishing_or_changi
         fs::read(legacy.vault().join("folio.sqlite3")).unwrap(),
         before
     );
-    assert_eq!(legacy.agent_snapshot().unwrap_err(), "UNKNOWN_CATEGORY");
+    assert_eq!(legacy.snapshot().unwrap_err(), "UNKNOWN_CATEGORY");
+    assert_eq!(legacy.agent_list().unwrap_err(), "UNKNOWN_CATEGORY");
 }

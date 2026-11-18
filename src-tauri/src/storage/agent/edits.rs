@@ -238,15 +238,7 @@ impl Store {
 }
 
 fn agent_record(db: &Connection, id: &str) -> Result<ProfileRecord> {
-    let body: Option<String> = db
-        .query_row(
-            "SELECT body FROM records WHERE id=?1 AND deleted=0",
-            [id],
-            |row| row.get(0),
-        )
-        .optional()
-        .map_err(err)?;
-    serde_json::from_str(&body.ok_or("RECORD_NOT_FOUND")?).map_err(err)
+    find_record(db, id)?.ok_or_else(|| "RECORD_NOT_FOUND".into())
 }
 
 fn checked_attachment(

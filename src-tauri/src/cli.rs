@@ -534,23 +534,13 @@ fn execute(args: Arguments, stdin: &mut dyn Read) -> CliResult<Value> {
             let store = Store::agent_existing(args.root.clone()).map_err(storage_error)?;
             match command {
                 "list" => {
-                    let snapshot = store.agent_snapshot().map_err(storage_error)?;
-                    let records: Vec<Value> = snapshot.records.iter().map(|record| json!({"id": record.id, "category": record.category, "title": record.title, "updatedAt": record.updated_at, "fieldCount": record.fields.len(), "attachmentCount": snapshot.attachments.iter().filter(|file| file.metadata.record_id == record.id).count()})).collect();
-                    json!({"records": records, "dataDir": snapshot.data_dir, "categories": snapshot.categories, "categoriesRevision": snapshot.categories_revision})
+                    let (records, catalog) = store.agent_list().map_err(storage_error)?;
+                    json!({"records": records, "dataDir": display_path(store.root()), "categories": catalog.categories, "categoriesRevision": catalog.revision})
                 }
                 "get" => {
-                    let snapshot = store.agent_snapshot().map_err(storage_error)?;
-                    let record = snapshot
-                        .records
-                        .into_iter()
-                        .find(|record| Some(record.id.as_str()) == id)
-                        .ok_or_else(|| storage_error("RECORD_NOT_FOUND".into()))?;
-                    let attachments: Vec<_> = snapshot
-                        .attachments
-                        .into_iter()
-                        .filter(|file| file.metadata.record_id == record.id)
-                        .collect();
-                    json!({"record": record, "attachments": attachments, "dataDir": snapshot.data_dir, "categories": snapshot.categories, "categoriesRevision": snapshot.categories_revision})
+                    let (record, attachments, catalog) =
+                        store.agent_get(id.unwrap()).map_err(storage_error)?;
+                    json!({"record": record, "attachments": attachments, "dataDir": display_path(store.root()), "categories": catalog.categories, "categoriesRevision": catalog.revision})
                 }
                 "update" => {
                     json!({"record": store.agent_update(record.unwrap(), expected.unwrap()).map_err(storage_error)?, "dataDir": display_path(store.root())})
