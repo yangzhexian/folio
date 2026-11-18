@@ -323,6 +323,7 @@ test('loads only local resources and fits both desktop sizes', async ({ page }) 
   page.on('pageerror', (error) => runtimeErrors.push(error.message));
   await page.reload();
   await expect(page.locator('.nav-item.selected')).toContainText('All records');
+  await expect(page.locator('.brand')).toHaveText('Folio');
   await page.screenshot({ path: 'artifacts/preview-en.png', fullPage: true });
   await page.setViewportSize({ width: 900, height: 620 });
   await expect(page.getByRole('button', { name: 'New record', exact: true })).toBeInViewport();
@@ -331,6 +332,7 @@ test('loads only local resources and fits both desktop sizes', async ({ page }) 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByRole('button', { name: 'Language', exact: true }).click();
   await expect(page.locator('.nav-item.selected')).toContainText('全部条目');
+  await expect(page.locator('.brand')).toHaveText('Folio');
   await page.screenshot({ path: 'artifacts/preview-zh.png', fullPage: true });
   await page.setViewportSize({ width: 900, height: 620 });
   await expect(page.getByRole('button', { name: '新建条目', exact: true })).toBeInViewport();

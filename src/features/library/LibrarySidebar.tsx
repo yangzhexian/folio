@@ -46,7 +46,7 @@ export function LibrarySidebar(props: SidebarProps) {
     <aside className="sidebar" inert={props.inert}>
       <div className="brand">
         <div className="brand-mark"><BookOpen size={21} strokeWidth={1.8} /></div>
-        <span>folio<span className="brand-dot">.</span></span>
+        <span>Folio</span>
       </div>
       <nav aria-label={t('library')}>
         <NavigationItem icon={LayoutGrid} label={t('all')} selected={view === 'all'} count={props.records} onClick={() => onNavigate('all')} />

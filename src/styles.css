@@ -24,7 +24,6 @@ h1, h2, h3, p { margin: 0; }
 .sidebar { width: 228px; flex-shrink: 0; background: var(--sidebar); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 0 14px; }
 .brand { flex-shrink: 0; height: 83px; display: flex; align-items: center; gap: 9px; padding: 0 13px; }
 .brand > span:first-of-type { font-size: 28px; letter-spacing: -1.5px; font-weight: 700; }
-.brand-dot { color: var(--brand-dot); }
 .brand-mark { width: 30px; height: 32px; display: grid; place-items: center; color: var(--accent); }
 .sidebar nav { min-height: 0; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; }
 .nav-item { display: flex; align-items: center; width: 100%; gap: 11px; padding: 10px 12px; border-radius: 5px; color: var(--nav-text); text-align: left; font-size: 14px; min-height: 37px; }
