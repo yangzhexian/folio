@@ -3,169 +3,30 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Folio | Compare the films</title>
+    <title>Folio | Product tour</title>
     <style>
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        background: #f2f0e6;
-        color: #233e33;
-        font:
-          16px/1.5 system-ui,
-          sans-serif;
-      }
-      main {
-        width: min(1180px, 94vw);
-        margin: 4vh auto;
-      }
-      header,
-      nav {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 12px 24px;
-      }
-      h1 {
-        font:
-          600 48px/1 Georgia,
-          serif;
-        letter-spacing: -3px;
-        margin: 15px 0;
-      }
-      header p {
-        margin-left: auto;
-      }
-      .versions {
-        display: flex;
-        gap: 6px;
-        margin: 12px 0;
-      }
-      button,
-      a {
-        font: inherit;
-        color: inherit;
-      }
-      button {
-        padding: 6px 18px;
-        border-radius: 8px;
-        border: 1px solid #9baa96;
-        background: transparent;
-        cursor: pointer;
-      }
-      button[aria-pressed='true'] {
-        background: #345640;
-        color: white;
-      }
-      video {
-        display: block;
-        width: 100%;
-        aspect-ratio: 16/9;
-        background: #142832;
-        border-radius: 12px;
-      }
-      nav {
-        margin-top: 16px;
-      }
-      a {
-        text-underline-offset: 4px;
-      }
-      small {
-        display: block;
-        margin-top: 18px;
-        color: #506857;
-      }
-      button:focus-visible,
-      a:focus-visible {
-        outline: 3px solid #bb5f34;
-        outline-offset: 3px;
-      }
-      @media (max-width: 650px) {
-        header p {
-          width: 100%;
-          margin: 0;
-        }
-        h1 {
-          font-size: 39px;
-        }
-      }
+      :root { color-scheme: light; }
+      body { margin: 0; background: #f2f0e6; color: #233e33; font: 16px/1.5 system-ui, sans-serif; }
+      main { width: min(1180px, 94vw); margin: 4vh auto; }
+      h1 { margin: 0 0 1rem; font: 600 clamp(2.2rem, 4vw, 3rem)/1 Georgia, serif; letter-spacing: -0.06em; }
+      video { display: block; width: 100%; aspect-ratio: 16/9; background: #213b32; border-radius: 12px; }
+      nav { display: flex; flex-wrap: wrap; gap: 0.6rem 1.5rem; margin-top: 1rem; }
+      a { color: inherit; text-underline-offset: 4px; }
+      :focus-visible { outline: 3px solid #995232; outline-offset: 3px; }
     </style>
   </head>
   <body>
     <main>
-      <header>
-        <h1>folio.</h1>
-        <p>One minute in a personal library</p>
-      </header>
-      <div class="versions" aria-label="Choose a film">
-        <button type="button" data-version="remotion" aria-pressed="true">
-          Field Guide / Remotion</button
-        ><button type="button" data-version="hyperframes" aria-pressed="false">
-          Night Desk / HyperFrames
-        </button>
-      </div>
-      <video
-        controls
-        playsinline
-        preload="metadata"
-        src="folio-intro.mp4"
-        poster="folio-poster.png"
-        aria-label="Folio product tour"
-      >
-        <track
-          kind="captions"
-          srclang="en"
-          label="English"
-          src="folio-intro.en.vtt"
-        />
-        <track
-          kind="captions"
-          srclang="zh"
-          label="中文"
-          src="folio-intro.zh.vtt"
-        />
+      <h1>Folio</h1>
+      <video controls playsinline preload="metadata" src="folio-intro.mp4" poster="folio-poster.png" aria-label="Folio product tour">
+        <track kind="captions" srclang="en" label="English" src="folio-intro.en.vtt" />
+        <track kind="captions" srclang="zh" label="中文" src="folio-intro.zh.vtt" />
+        <a href="folio-intro.mp4">Watch the film</a>
       </video>
-      <nav aria-label="Downloads">
-        <a id="mp4" href="folio-intro.mp4" download>Download MP4</a
-        ><a id="gif" href="folio-preview.gif">Open full GIF</a
-        ><a href="folio-poster.png">Poster</a>
+      <nav aria-label="Tour downloads">
+        <a href="folio-intro.mp4" download>Download MP4</a>
+        <a href="folio-preview.gif">Open full GIF</a>
       </nav>
-      <small>Each film runs 60 seconds in 2560 × 1440 at 30 fps. Switch versions at the same point in the tour. All records and files are fictional.</small>
     </main>
-    <script>
-      const video = document.querySelector('video');
-      const files = {
-        remotion: ['folio-intro.mp4', 'folio-preview.gif'],
-        hyperframes: ['folio-hyperframes.mp4', 'folio-hyperframes.gif'],
-      };
-      let generation = 0;
-      for (const button of document.querySelectorAll('[data-version]'))
-        button.addEventListener('click', () => {
-          if (button.getAttribute('aria-pressed') === 'true') return;
-          const [mp4, gif] = files[button.dataset.version];
-          const time = video.currentTime,
-            playing = !video.paused,
-            current = ++generation;
-          video.pause();
-          document
-            .querySelectorAll('[data-version]')
-            .forEach((item) =>
-              item.setAttribute('aria-pressed', String(item === button)),
-            );
-          document.querySelector('#mp4').href = mp4;
-          document.querySelector('#gif').href = gif;
-          video.addEventListener(
-            'loadedmetadata',
-            () => {
-              if (current !== generation) return;
-              video.currentTime = Math.min(time, video.duration);
-              if (playing) void video.play().catch(() => {});
-            },
-            { once: true },
-          );
-          video.src = mp4;
-        });
-    </script>
   </body>
 </html>

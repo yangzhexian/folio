@@ -18,5 +18,4 @@ data/
 artifacts/
 video/.bundle/
 video/public/audio/
-docs/media/.*.hf-transaction-*/
 .DS_Store

@@ -1,16 +1,12 @@
+import assert from 'node:assert/strict';
 import { chromium } from '@playwright/test';
 import { createServer } from 'node:http';
 import { createReadStream, readFileSync, statSync, writeFileSync } from 'node:fs';
 
-import { ffmpeg, ffprobe, project, run, work } from './tools.mjs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { ffmpeg, ffprobe, output, project, run, work } from './tools.mjs';
 
-const root = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '../..',
-);
-const directory = path.join(root, 'docs/media');
+const directory = output;
 const contentTypes = {
   '.html': 'text/html',
   '.mp4': 'video/mp4',
@@ -21,9 +17,9 @@ const contentTypes = {
 const recorded = JSON.parse(
   readFileSync(path.join(project, 'public/session/manifest.json'), 'utf8'),
 );
-const chapterCount = JSON.parse(
+const chapters = JSON.parse(
   readFileSync(path.join(project, 'src/story.json'), 'utf8'),
-).length;
+);
 const source = JSON.parse(
   run(
     ffprobe,
@@ -52,12 +48,7 @@ if (
     'The source recording differs from its measured timing manifest.',
   );
 const decoded = [];
-for (const name of [
-  'folio-intro.mp4',
-  'folio-hyperframes.mp4',
-  'folio-preview.gif',
-  'folio-hyperframes.gif',
-]) {
+for (const name of ['folio-intro.mp4', 'folio-preview.gif']) {
   const file = path.join(directory, name);
   const gif = name.endsWith('.gif');
   // count_frames makes ffprobe decode every frame, including GIF disposal and timing.
@@ -127,27 +118,10 @@ const metadata = {
     remotion: JSON.parse(
       readFileSync(path.join(project, 'node_modules/remotion/package.json')),
     ).version,
-    hyperframes: JSON.parse(
-      readFileSync(path.join(project, 'node_modules/hyperframes/package.json')),
-    ).version,
   },
   files: decoded,
 };
 const generated = JSON.stringify(metadata, null, 2) + '\n';
-if (process.argv.includes('--update'))
-  writeFileSync(path.join(directory, 'render-metadata.json'), generated);
-else if (
-  JSON.stringify(
-    JSON.parse(
-      readFileSync(path.join(directory, 'render-metadata.json'), 'utf8'),
-    ),
-  ) !== JSON.stringify(metadata)
-)
-  throw new Error(
-    'Media metadata is out of date. Run video verification with --update after rendering.',
-  );
-writeFileSync(path.join(work, 'decoded-media.json'), generated);
-console.log(JSON.stringify(decoded, null, 2));
 const server = createServer(async (request, response) => {
   const fileName =
     decodeURIComponent(
@@ -197,6 +171,7 @@ try {
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(origin);
   const player = page.locator('video');
+  assert.equal(await player.count(), 1);
   await page.waitForFunction(
     () => document.querySelector('video').readyState >= 2,
   );
@@ -210,61 +185,63 @@ try {
     () => document.querySelector('video').currentTime > 0.2,
   );
   await player.evaluate((v) => v.pause());
-  for (const version of ['remotion', 'hyperframes']) {
-    await page
-      .getByRole('button', {
-        name: version === 'remotion' ? /Field Guide/ : /Night Desk/,
-      })
-      .click();
-    await page.waitForFunction(
-      (v) =>
-        document.querySelector('video').currentSrc.includes(v) &&
-        document.querySelector('video').readyState >= 2,
-      version === 'remotion' ? 'folio-intro' : 'folio-hyperframes',
-    );
-    if (version === 'hyperframes') {
-      await page.waitForFunction(
-        () => Math.abs(document.querySelector('video').currentTime - 58) < 0.2,
-      );
-    }
-    for (const time of [6, 15, 24, 31, 42, 52, 58]) {
-      await player.evaluate(
-        (v, t) =>
-          new Promise((resolve) => {
-            if (Math.abs(v.currentTime - t) < 0.05) {
-              resolve();
-              return;
-            }
-            v.addEventListener('seeked', resolve, { once: true });
-            v.currentTime = t;
-          }),
-        time,
-      );
-      await page.waitForFunction(
-        () =>
-          document.querySelector('video').readyState >= 2 &&
-          !document.querySelector('video').seeking,
-      );
-    }
-    const meta = await player.evaluate((v) => ({
-      width: v.videoWidth,
-      height: v.videoHeight,
-      duration: v.duration,
-      cues: [...v.textTracks].map((t) => t.cues?.length),
-    }));
-    if (
-      meta.width !== 2560 ||
-      meta.height !== 1440 ||
-      Math.abs(meta.duration - 60) > 0.1 ||
-      meta.cues.some((n) => n !== chapterCount)
-    )
-      throw new Error('Invalid player: ' + JSON.stringify(meta));
+  for (const chapter of chapters.slice(1)) {
+    const time = chapter.start + 0.5;
+    await player.evaluate((video, seconds) => { video.currentTime = seconds; }, time);
+    await page.waitForFunction((seconds) => {
+      const video = document.querySelector('video');
+      return !video.seeking && video.readyState >= 2 && Math.abs(video.currentTime - seconds) < 0.1;
+    }, time);
   }
-  if (errors.length) throw new Error(JSON.stringify(errors));
-  console.log(
-    'Both versions play and seek in Chrome. Timestamp switching and both caption tracks passed.',
+  await page.waitForFunction(() =>
+    [...document.querySelector('video').textTracks].every((track) => track.cues?.length),
   );
+  const meta = await player.evaluate((video) => ({
+    width: video.videoWidth,
+    height: video.videoHeight,
+    duration: video.duration,
+    tracks: [...video.textTracks].map((track) => ({
+      language: track.language,
+      cues: [...track.cues].map((cue) => ({
+        text: cue.text,
+        start: Math.round(cue.startTime * 1000),
+        end: Math.round(cue.endTime * 1000),
+      })),
+    })),
+  }));
+  assert.deepEqual([meta.width, meta.height], [2560, 1440]);
+  assert.ok(Math.abs(meta.duration - 60) < 0.1, 'Unexpected playback duration');
+  assert.deepEqual(meta.tracks.map((track) => track.language), ['en', 'zh']);
+  const starts = chapters.map((chapter) => {
+    if (chapter.id === 'opening' || chapter.id === 'closing')
+      return chapter.start * 1000;
+    const action = recorded.cues.find((cue) => cue.id === chapter.id);
+    assert.ok(action, 'Missing recorded action ' + chapter.id);
+    return Math.round((3 + action.time) * 1000);
+  });
+  for (const track of meta.tracks) {
+    const expected = chapters.map((chapter, index) => {
+      const text = chapter[track.language];
+      assert.ok(
+        text.trim() && !/[\p{P}\p{S}\r\n]/u.test(text),
+        'Expected one unpunctuated caption line for ' + chapter.id,
+      );
+      return { text, start: starts[index], end: starts[index + 1] ?? 60_000 };
+    });
+    assert.deepEqual(track.cues, expected, 'Caption timing or text differs from the composition');
+  }
+  assert.deepEqual(errors, []);
 } finally {
   await browser?.close();
   server.close();
 }
+
+const metadataFile = path.join(directory, 'render-metadata.json');
+if (process.argv.includes('--update')) {
+  writeFileSync(metadataFile, generated);
+} else {
+  assert.deepEqual(JSON.parse(readFileSync(metadataFile, 'utf8')), metadata, 'Update render metadata after exporting the new media');
+}
+writeFileSync(path.join(work, 'decoded-media.json'), generated);
+console.log(JSON.stringify(decoded, null, 2));
+console.log('Verified local playback, seeking, timed English and Chinese captions, and the full GIF.');

@@ -8,7 +8,7 @@
 | Fix a defect | Reproduce it with a synthetic record or file. Identify the first layer that breaks the documented behavior. | A failing case before the fix, a passing case afterwards, and a check of the other callers of that layer. |
 | Refactor or optimize | Write down the observable contract first. Compare the same fixture, build mode and machine before and after. | Equivalent outputs and selection, conflict or recovery behavior. Include timings, memory or query plans for performance changes. |
 | Change persisted data or a public interface | Check the [storage contract](storage.md) and both desktop and CLI consumers. | Old-vault reads, upgrade and reopen, backup round trip, conflict and failure cases. |
-| Change the introduction | Use synthetic fixtures and the [media project](../../video/README.md). | Both renders, decoded dimensions and duration, and visual checks of the altered operations. |
+| Change the introduction | Use synthetic fixtures and the [media project](../../video/README.md). | Decoded MP4 and GIF dimensions and duration, the timed bilingual captions, and visual checks of the altered operations. |
 
 ## From change to merge
 
