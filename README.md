@@ -8,7 +8,7 @@ Follow one fictional record through a field search, drag-and-drop import, a pinn
 
 [Video player](docs/media/index.html) / [Poster](docs/media/folio-poster.png) / [Storyboard and rendering instructions](video/README.md)
 
-Download the Windows installer from [Folio v0.4.3](https://github.com/yangzhexian/folio/releases/tag/v0.4.3). The release also includes a portable desktop/CLI package, the agent skill, and file checksums.
+Download the Windows installer from [Folio v0.4.4](https://github.com/yangzhexian/folio/releases/tag/v0.4.4). The release also includes a portable desktop/CLI package, the agent skill, and file checksums.
 
 ## Features
 
