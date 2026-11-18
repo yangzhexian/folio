@@ -1,11 +1,10 @@
-import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
+import {mkdirSync, writeFileSync} from 'node:fs';
 import {dirname, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 // An original, deterministic instrumental bed. No samples or remote assets are used.
 const sampleRate = 44_100;
-const session = JSON.parse(readFileSync(new URL('../public/session/manifest.json', import.meta.url)));
-const duration = session.duration + 7;
+const duration = 60;
 const frames = Math.round(sampleRate * duration);
 const left = new Float64Array(frames);
 const right = new Float64Array(frames);

@@ -2,9 +2,16 @@
 
 A small desktop library for personal details, education, experience, research, contacts, and supporting documents. Folio uses Tauri 2, React, TypeScript, and SQLite to keep records and managed files on your computer. Its interface supports English and Simplified Chinese.
 
-[![Folio introduction: organize personal details, find and copy fields, manage files, and choose your appearance](docs/media/folio-preview.gif)](docs/media/folio-intro.mp4)
+[![Folio Field Guide, a complete animated tour of the personal library](docs/media/folio-preview.gif)](docs/media/folio-intro.mp4)
 
-**[Watch or download the full introduction](docs/media/folio-intro.mp4)**: 60.6 seconds, 2K (2560 × 1440), English titles with Chinese captions and original instrumental music. The right-hand window follows one uninterrupted operation from search and editing through image/PDF preview, file management, and appearance changes. The embedded 1080p GIF (1920 × 1080) shows the complete approximately 60-second tour at normal speed; a [static poster](docs/media/folio-poster.png) is also available. All records shown are fictional demonstration data captured in Folio 0.4.1. Built with [Remotion](https://github.com/remotion-dev/remotion); [storyboard](video/storyboard.md) and [source and reproduction instructions](video/README.md).
+Follow one fictional record from field search and copying through field insertion and ordering, drag-and-drop import, a pinned image and PDF viewer, custom collection icons, dark mode, and Chinese. Both films run for 60 seconds in 2560 × 1440 at 30 fps, with English and Chinese captions and original music. The full-length 1080p GIFs play at normal speed.
+
+| Film | Video | Animated preview |
+| --- | --- | --- |
+| Field Guide, made with Remotion | [Watch MP4](docs/media/folio-intro.mp4) | [Open GIF](docs/media/folio-preview.gif) |
+| Night Desk, made with HyperFrames | [Watch MP4](docs/media/folio-hyperframes.mp4) | [Open GIF](docs/media/folio-hyperframes.gif) |
+
+Open the comparison player from a local checkout to switch versions at the same timestamp. [Player](docs/media/index.html) / [Static poster](docs/media/folio-poster.png) / [Storyboard and rendering instructions](video/README.md)
 
 Download the Windows installer from [Folio v0.4.3](https://github.com/yangzhexian/folio/releases/tag/v0.4.3). The release also includes a portable desktop/CLI package, the agent skill, and file checksums.
 

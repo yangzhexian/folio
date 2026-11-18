@@ -5,52 +5,83 @@
   },
   "uiScale": 1.3333333333333333,
   "fps": 30,
-  "duration": 53.6,
-  "frameCount": 1838,
+  "duration": 54,
+  "observedFrames": 1821,
+  "encodedFrames": 1620,
   "cues": [
     {
       "id": "organize",
-      "time": 0.058
+      "time": 0.051
     },
     {
       "id": "search",
-      "time": 2.009
+      "time": 3.311
     },
     {
       "id": "edit",
-      "time": 8.312
+      "time": 8.304
+    },
+    {
+      "id": "import",
+      "time": 18.404
     },
     {
       "id": "image",
-      "time": 19.011
+      "time": 21.708
+    },
+    {
+      "id": "pin",
+      "time": 24.613
     },
     {
       "id": "pdf",
-      "time": 25.503
+      "time": 30.009
     },
     {
       "id": "files",
-      "time": 34.015
+      "time": 35.006
+    },
+    {
+      "id": "collections",
+      "time": 38.51
     },
     {
       "id": "appearance",
-      "time": 43.002
+      "time": 48
     },
     {
       "id": "language",
-      "time": 50.503
+      "time": 50.505
     }
   ],
   "data": "Fictional records and locally generated PNG/PDF only. One continuous actual frontend session.",
   "verification": {
     "fieldOrder": [
-      "email",
+      "d44e8089-893b-41ca-a517-4db2c666555b",
       "full-name",
+      "email",
       "qq",
       "city",
       "document"
     ],
-    "renamedFile": "identity_certificate.pdf",
+    "insertedField": {
+      "label": "Alias",
+      "value": "Alex",
+      "position": 0
+    },
+    "importedFile": "identity_c01dc0ffee01.png",
+    "viewer": {
+      "pinned": true,
+      "dragged": true,
+      "backgroundRecord": "MSc: Computer Science",
+      "pdfPage": 2
+    },
+    "firstCollection": {
+      "id": "education",
+      "nameEn": "Learning",
+      "nameZh": "教育经历",
+      "icon": "book-open"
+    },
     "browserErrors": [],
     "remoteRequests": []
   }

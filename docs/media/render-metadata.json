@@ -1,70 +1,55 @@
 {
-  "source": {
-    "file": "video/public/session/continuous.mp4",
-    "durationSeconds": 53.6,
-    "viewport": {
-      "width": 1920,
-      "height": 1200
-    },
-    "continuous": true,
-    "cues": [
-      {
-        "id": "organize",
-        "time": 0.058
-      },
-      {
-        "id": "search",
-        "time": 2.009
-      },
-      {
-        "id": "edit",
-        "time": 8.312
-      },
-      {
-        "id": "image",
-        "time": 19.011
-      },
-      {
-        "id": "pdf",
-        "time": 25.503
-      },
-      {
-        "id": "files",
-        "time": 34.015
-      },
-      {
-        "id": "appearance",
-        "time": 43.002
-      },
-      {
-        "id": "language",
-        "time": 50.503
-      }
-    ]
+  "durationSeconds": 60,
+  "source": "video/public/session/continuous.mp4",
+  "sourceDurationSeconds": 54,
+  "versions": {
+    "remotion": "4.0.538",
+    "hyperframes": "0.9.65"
   },
-  "remotion": "4.0.538",
-  "fps": 30,
-  "width": 2560,
-  "height": 1440,
-  "durationInSeconds": 60.608,
-  "codec": "h264",
-  "canPlayInVideoTag": true,
-  "supportsSeeking": true,
-  "colorSpace": "bt470bg",
-  "audioCodec": "aac",
-  "audioFileExtension": "aac",
-  "pixelFormat": "yuvj420p",
-  "hasAudio": true,
-  "preview": {
-    "file": "docs/media/folio-preview.gif",
-    "width": 1920,
-    "height": 1080,
-    "fps": 12,
-    "frames": 728,
-    "durationSeconds": 60.666666666666664,
-    "fullWorkflow": true,
-    "playbackRate": 1,
-    "dither": "none",
-    "frameDifferenceMode": "rectangle"
-  }
+  "files": [
+    {
+      "name": "folio-intro.mp4",
+      "width": 2560,
+      "height": 1440,
+      "frames": 1800,
+      "durationSeconds": 60.011,
+      "frameRate": 30,
+      "videoCodec": "h264",
+      "audioCodec": "aac",
+      "bytes": 12616634
+    },
+    {
+      "name": "folio-hyperframes.mp4",
+      "width": 2560,
+      "height": 1440,
+      "frames": 1800,
+      "durationSeconds": 60,
+      "frameRate": 30,
+      "videoCodec": "h264",
+      "audioCodec": "aac",
+      "bytes": 14489112
+    },
+    {
+      "name": "folio-preview.gif",
+      "width": 1920,
+      "height": 1080,
+      "frames": 720,
+      "durationSeconds": 60,
+      "frameRate": 12,
+      "videoCodec": "gif",
+      "audioCodec": null,
+      "bytes": 39964757
+    },
+    {
+      "name": "folio-hyperframes.gif",
+      "width": 1920,
+      "height": 1080,
+      "frames": 720,
+      "durationSeconds": 60,
+      "frameRate": 12,
+      "videoCodec": "gif",
+      "audioCodec": null,
+      "bytes": 43710314
+    }
+  ]
 }
