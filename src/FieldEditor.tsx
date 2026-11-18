@@ -1,3 +1,5 @@
+import { Button, IconButton } from './ui/Buttons';
+import { fieldCopy } from './i18n/fields';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, PointerEvent } from 'react';
 import { GripVertical, LockKeyhole, Plus, X } from 'lucide-react';
@@ -15,19 +17,6 @@ export interface FieldEditorProps {
   disabled?: boolean;
 }
 
-const copy = {
-  en: {
-    insertStart: 'Add field at start', insertAfter: 'Add field after', reorder: 'Reorder',
-    reorderHint: 'Drag to reorder, or use the Up and Down arrow keys. Home moves to the start; End moves to the end.',
-    moved: (name: string, position: number, count: number) => `${name} moved to position ${position} of ${count}.`,
-  },
-  zh: {
-    insertStart: '在开头添加字段', insertAfter: '在此字段后添加', reorder: '调整顺序',
-    reorderHint: '拖动以调整顺序，也可使用上下方向键。Home 移至开头，End 移至末尾。',
-    moved: (name: string, position: number, count: number) => `${name} 已移至第 ${position} 项，共 ${count} 项。`,
-  },
-};
-
 type DragState = {
   fieldId: string;
   pointerId: number;
@@ -42,7 +31,7 @@ type FocusTarget = { id: string; control: 'label' | 'handle' } | 'empty';
 
 export function FieldEditor({ fields, locale, onChange, disabled = false }: FieldEditorProps) {
   const t = tFor(locale);
-  const text = copy[locale];
+  const text = fieldCopy[locale];
   const hintId = useId();
   const root = useRef<HTMLDivElement>(null);
   const labelInputs = useRef(new Map<string, HTMLInputElement>());
@@ -91,7 +80,7 @@ export function FieldEditor({ fields, locale, onChange, disabled = false }: Fiel
     const moved = reordered[drag.destination];
     pendingFocus.current = { id: drag.fieldId, control: 'handle' };
     current.onChange(reordered);
-    setAnnouncement(copy[current.locale].moved(fieldLabel(moved, current.locale) || String(drag.destination + 1), drag.destination + 1, reordered.length));
+    setAnnouncement(fieldCopy[current.locale].moved(fieldLabel(moved, current.locale) || String(drag.destination + 1), drag.destination + 1, reordered.length));
   }
 
   useEffect(() => {
@@ -201,7 +190,7 @@ export function FieldEditor({ fields, locale, onChange, disabled = false }: Fiel
   return <div ref={root} className={`field-editor editor-fields ${dragView?.active ? 'is-reordering' : ''}`}>
     <span id={hintId} className="field-editor-status">{text.reorderHint}</span>
     <span className="field-editor-status" role="status" aria-live="polite">{announcement}</span>
-    {fields.length > 0 ? <button type="button" className="field-insert field-insert-start" aria-label={text.insertStart} title={text.insertStart} disabled={disabled} onClick={() => insert(null)}><Plus size={13}/>{t('addField')}</button> : <button ref={emptyButton} type="button" className="button add-field-button" disabled={disabled} onClick={() => insert(null)}><Plus size={15}/>{t('addField')}</button>}
+    {fields.length > 0 ? <button type="button" className="field-insert field-insert-start" aria-label={text.insertStart} title={text.insertStart} disabled={disabled} onClick={() => insert(null)}><Plus size={13}/>{t('addField')}</button> : <Button ref={emptyButton} className="add-field-button" disabled={disabled} onClick={() => insert(null)}><Plus size={15}/>{t('addField')}</Button>}
     {fields.map((field, index) => {
       const name = fieldLabel(field, locale) || String(index + 1);
       const inactive = disabled || !!dragView?.active;
@@ -212,7 +201,7 @@ export function FieldEditor({ fields, locale, onChange, disabled = false }: Fiel
             <span className="field-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
             <input ref={node => { if (node) labelInputs.current.set(field.id, node); else labelInputs.current.delete(field.id); }} aria-label={`${t('label')} ${index + 1}`} value={field.label} placeholder={t('label')} onChange={event => patch(field.id, { label: event.target.value })} required disabled={inactive}/>
             <input aria-label={`${t('labelZh')} ${index + 1}`} value={field.labelZh ?? ''} placeholder={t('labelZh')} onChange={event => patch(field.id, { labelZh: event.target.value })} disabled={inactive}/>
-            <button type="button" className="icon-button" aria-label={`${t('remove')} ${name}`} title={`${t('remove')} ${name}`} onClick={() => remove(field.id)} disabled={inactive}><X size={15}/></button>
+            <IconButton label={`${t('remove')} ${name}`} onClick={() => remove(field.id)} disabled={inactive}><X size={15}/></IconButton>
           </div>
           {field.kind === 'multiline' ? <textarea aria-label={`${t('value')} ${index + 1}`} value={field.value} placeholder={fieldLabel(field, locale)} onChange={event => patch(field.id, { value: event.target.value })} rows={3} disabled={inactive}/> : field.kind === 'date' ? <DatePicker label={`${t('value')} ${index + 1}`} value={field.value} onChange={value => patch(field.id, { value })} locale={locale} disabled={inactive}/> : <input aria-label={`${t('value')} ${index + 1}`} value={field.value} type="text" placeholder={fieldLabel(field, locale)} onChange={event => patch(field.id, { value: event.target.value })} disabled={inactive}/>}
           <div className="editor-field-options">

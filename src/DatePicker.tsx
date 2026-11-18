@@ -1,3 +1,5 @@
+import { IconButton } from './ui/Buttons';
+import { calendarCopy } from './i18n/calendar';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
@@ -6,13 +8,8 @@ import type { CalendarDate } from './calendar';
 import type { Locale } from './types';
 import './date-picker.css';
 
-const copy = {
-  en: { choose: 'Choose date', calendar: 'Date calendar', previousYear: 'Previous year', nextYear: 'Next year', previousMonth: 'Previous month', nextMonth: 'Next month', today: 'Today', clear: 'Clear date', invalid: 'Enter a valid date as YYYY-MM-DD.', weekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
-  zh: { choose: '选择日期', calendar: '日期日历', previousYear: '上一年', nextYear: '下一年', previousMonth: '上个月', nextMonth: '下个月', today: '今天', clear: '清除日期', invalid: '请输入有效日期，格式为 YYYY-MM-DD。', weekdays: ['一', '二', '三', '四', '五', '六', '日'] },
-};
-
 export function DatePicker({ value, onChange, locale, label, disabled = false }: { value: string; onChange: (value: string) => void; locale: Locale; label: string; disabled?: boolean }) {
-  const text = copy[locale];
+  const text = calendarCopy[locale];
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -115,11 +112,11 @@ export function DatePicker({ value, onChange, locale, label, disabled = false }:
     {invalid && <span id={`${id}-error`} className="date-picker-error">{text.invalid}</span>}
     {open && <div ref={panel} id={id} className="date-picker-panel" role="group" aria-label={text.calendar}>
       <div className="date-picker-header">
-        <button type="button" aria-label={text.previousYear} title={text.previousYear} disabled={focused.year <= 1} onClick={() => navigate(-12)}><ChevronsLeft size={17}/></button>
-        <button type="button" aria-label={text.previousMonth} title={text.previousMonth} disabled={focused.year === 1 && focused.month === 1} onClick={() => navigate(-1)}><ChevronLeft size={17}/></button>
+        <IconButton label={text.previousYear} disabled={focused.year <= 1} onClick={() => navigate(-12)}><ChevronsLeft size={17}/></IconButton>
+        <IconButton label={text.previousMonth} disabled={focused.year === 1 && focused.month === 1} onClick={() => navigate(-1)}><ChevronLeft size={17}/></IconButton>
         <span aria-live="polite" className="date-picker-month">{monthTitle}</span>
-        <button type="button" aria-label={text.nextMonth} title={text.nextMonth} disabled={focused.year === 9999 && focused.month === 12} onClick={() => navigate(1)}><ChevronRight size={17}/></button>
-        <button type="button" aria-label={text.nextYear} title={text.nextYear} disabled={focused.year >= 9999} onClick={() => navigate(12)}><ChevronsRight size={17}/></button>
+        <IconButton label={text.nextMonth} disabled={focused.year === 9999 && focused.month === 12} onClick={() => navigate(1)}><ChevronRight size={17}/></IconButton>
+        <IconButton label={text.nextYear} disabled={focused.year >= 9999} onClick={() => navigate(12)}><ChevronsRight size={17}/></IconButton>
       </div>
       <div role="grid" aria-label={monthTitle} className="date-picker-grid">
         <div role="row" className="date-picker-weekdays">{text.weekdays.map(day => <span role="columnheader" key={day}>{day}</span>)}</div>

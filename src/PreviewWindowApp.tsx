@@ -1,3 +1,5 @@
+import { previewCopy } from './i18n/preview';
+import { Button } from './ui/Buttons';
 import { useEffect, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -7,18 +9,13 @@ import { applyAppearance, readAppearance } from './theme';
 import { loadPreviewSession, previewSessionEvent, setPreviewPinned, type PreviewSession } from './previewWindow';
 import type { Locale } from './types';
 
-const copy = {
-  en: { title: 'Attachment preview', loading: 'Loading preview…', unavailable: 'This attachment is no longer available.', retry: 'Try again', copied: 'Copied', actionError: 'The action could not be completed. Try again.' },
-  zh: { title: '附件预览', loading: '正在加载预览…', unavailable: '此附件已不可用。', retry: '重试', copied: '已复制', actionError: '操作未完成，请重试。' },
-};
-
 function readPreferences() {
   return { ...readAppearance(localStorage), locale: (localStorage.getItem('folio.locale') === 'zh' ? 'zh' : 'en') as Locale };
 }
 
 export default function PreviewWindowApp() {
   const [preferences, setPreferences] = useState(readPreferences);
-  const text = copy[preferences.locale];
+  const text = previewCopy[preferences.locale];
   const [view, setView] = useState<{ session: PreviewSession; selectedId: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -134,8 +131,8 @@ export default function PreviewWindowApp() {
       onOpen={attachment => { void run(() => api.open(attachment.id)); }}
       onCopyPath={attachment => { void run(async () => { await api.copy(await api.path(attachment.id)); setToast(text.copied); }); }}
       onReveal={attachment => { void run(() => api.reveal(attachment.id)); }}/>
-      : <div className="preview-window-empty"><p role={loading ? 'status' : 'alert'}>{loading ? text.loading : text.unavailable}</p><div>
-        {!loading && <button className="button" type="button" onClick={() => refreshRef.current()}>{text.retry}</button>}
+      : <div className="preview-window-empty"><p role={loading ? 'status' : 'alert'}>{loading ? text.loading : text.sessionUnavailable}</p><div>
+        {!loading && <Button onClick={() => refreshRef.current()}>{text.retry}</Button>}
       </div></div>}
     {toast && <div className="toast preview-window-toast" role="status">{toast}</div>}
   </div>;

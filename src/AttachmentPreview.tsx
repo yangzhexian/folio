@@ -1,5 +1,7 @@
+import { previewCopy } from './i18n/preview';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import { Button, IconButton } from './ui/Buttons';
+import { containTabFocus } from './ui/dialogFocus';
 import { ChevronLeft, ChevronRight, Copy, ExternalLink, FolderOpen, Maximize, Pin, PinOff, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { api } from './api';
 import { previewKind } from './previewFormats';
@@ -7,39 +9,8 @@ import PdfPreview from './PdfPreview';
 import type { Attachment, Locale } from './types';
 import './attachment-preview.css';
 
-const copy = {
-  en: {
-    title: 'Attachment preview', previous: 'Previous attachment', next: 'Next attachment',
-    zoomIn: 'Zoom in', zoomOut: 'Zoom out', fit: 'Fit to view', zoom: 'Zoom',
-    previousPage: 'Previous page', nextPage: 'Next page', page: 'Page number',
-    external: 'Open externally', path: 'Copy path', folder: 'Show in folder', close: 'Close',
-    loading: 'Loading preview…', retry: 'Try again', unavailable: 'This file is unavailable. Try again or open it externally.',
-    invalid: 'This file could not be previewed. You can open it externally.',
-    password: 'This PDF requires a password. Open it externally to continue.',
-    tooLarge: 'This file exceeds the preview limit. Open it externally instead.',
-    timeout: 'Preview took too long. Try again or open the file externally.', desktop: 'Open the desktop app to preview files.',
-    pin: 'Keep on top', unpin: 'Stop keeping on top',
-  },
-  zh: {
-    title: '附件预览', previous: '上一个附件', next: '下一个附件',
-    zoomIn: '放大', zoomOut: '缩小', fit: '适应窗口', zoom: '缩放',
-    previousPage: '上一页', nextPage: '下一页', page: '页码',
-    external: '外部打开', path: '复制路径', folder: '在文件夹中显示', close: '关闭',
-    loading: '正在加载预览…', retry: '重试', unavailable: '文件不可用，请重试或使用外部应用打开。',
-    invalid: '无法预览此文件，可使用外部应用打开。',
-    password: '此 PDF 需要密码，请使用外部应用打开。',
-    tooLarge: '文件超过预览限制，请使用外部应用打开。',
-    timeout: '预览加载超时，请重试或使用外部应用打开。', desktop: '请在桌面应用中预览文件。',
-    pin: '窗口置顶', unpin: '取消置顶',
-  },
-};
-
-function Tool({ label, children, onClick, disabled = false }: { label: string; children: ReactNode; onClick: () => void; disabled?: boolean }) {
-  return <button type="button" className="icon-button" aria-label={label} title={label} disabled={disabled} onClick={onClick}>{children}</button>;
-}
-
 function PreviewPane({ file, locale }: { file: Attachment; locale: Locale }) {
-  const text = copy[locale];
+  const text = previewCopy[locale];
   const kind = previewKind(file.fileName);
   const viewportRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
@@ -137,21 +108,21 @@ function PreviewPane({ file, locale }: { file: Attachment; locale: Locale }) {
           if (image.naturalWidth > 16384 || image.naturalHeight > 16384 || image.naturalWidth * image.naturalHeight > 40_000_000) { fail('PREVIEW_TOO_LARGE'); return; }
           setImageSize({ width: image.naturalWidth, height: image.naturalHeight }); setLoading(false);
         }} onError={() => fail('PREVIEW_INVALID')}/>}
-      {error && <div className="preview-message"><p role="alert">{message}</p><button type="button" className="button" onClick={() => setAttempt(value => value + 1)}>{text.retry}</button></div>}
+      {error && <div className="preview-message"><p role="alert">{message}</p><Button onClick={() => setAttempt(value => value + 1)}>{text.retry}</Button></div>}
     </div>
     {loading && <div className="preview-loading" role="status"><span className="spinner small-spinner"/>{text.loading}</div>}
     <footer className="preview-toolbar">
       <div className="preview-control-group">
-        <Tool label={text.zoomOut} disabled={!ready || zoom <= .25} onClick={() => changeZoom(-.25)}><ZoomOut size={17}/></Tool>
+        <IconButton label={text.zoomOut} disabled={!ready || zoom <= .25} onClick={() => changeZoom(-.25)}><ZoomOut size={17}/></IconButton>
         <output className="preview-zoom" aria-label={text.zoom}>{Math.round(zoom * 100)}%</output>
-        <Tool label={text.zoomIn} disabled={!ready || zoom >= 4} onClick={() => changeZoom(.25)}><ZoomIn size={17}/></Tool>
-        <Tool label={text.fit} disabled={!ready} onClick={() => { setZoom(1); viewportRef.current?.scrollTo(0, 0); }}><Maximize size={16}/></Tool>
+        <IconButton label={text.zoomIn} disabled={!ready || zoom >= 4} onClick={() => changeZoom(.25)}><ZoomIn size={17}/></IconButton>
+        <IconButton label={text.fit} disabled={!ready} onClick={() => { setZoom(1); viewportRef.current?.scrollTo(0, 0); }}><Maximize size={16}/></IconButton>
       </div>
       {kind === 'pdf' && <div className="preview-control-group preview-pages">
-        <Tool label={text.previousPage} disabled={!ready || page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}><ChevronLeft size={18}/></Tool>
+        <IconButton label={text.previousPage} disabled={!ready || page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}><ChevronLeft size={18}/></IconButton>
         <input className="preview-page-input" type="number" min={1} max={pageCount || 1} step={1} aria-label={text.page} inputMode="numeric" value={pageDraft} disabled={!ready} onChange={event => setPageDraft(event.target.value)} onBlur={commitPage} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); commitPage(); } }}/>
         <span className="preview-page-count">/ {pageCount || '—'}</span>
-        <Tool label={text.nextPage} disabled={!ready || page >= pageCount} onClick={() => setPage(value => Math.min(pageCount, value + 1))}><ChevronRight size={18}/></Tool>
+        <IconButton label={text.nextPage} disabled={!ready || page >= pageCount} onClick={() => setPage(value => Math.min(pageCount, value + 1))}><ChevronRight size={18}/></IconButton>
       </div>}
     </footer>
   </div>;
@@ -163,7 +134,7 @@ export function AttachmentPreview({ files, initialId, locale, busy, onClose, onO
   selectedId?: string; onSelected?: (id: string) => void;
   native?: { pinned: boolean; pinning: boolean; onTogglePin: () => void };
 }) {
-  const text = copy[locale];
+  const text = previewCopy[locale];
   const [localId, setLocalId] = useState(initialId);
   const index = Math.max(0, files.findIndex(file => file.id === (selectedId ?? localId)));
   const file = files[index];
@@ -184,10 +155,7 @@ export function AttachmentPreview({ files, initialId, locale, busy, onClose, onO
     const key = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); closeRef.current(); }
       else if (event.key === 'Tab' && !native) {
-        const controls = [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), [tabindex="0"]')].filter(element => element.offsetParent !== null);
-        const first = controls[0], last = controls.at(-1);
-        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+        containTabFocus(event, dialog);
       } else if (!(event.target as HTMLElement).matches('input, textarea, select') && !event.ctrlKey && !event.metaKey && !event.altKey) {
         if (event.key === 'ArrowLeft') { event.preventDefault(); move(-1); }
         if (event.key === 'ArrowRight') { event.preventDefault(); move(1); }
@@ -206,16 +174,16 @@ export function AttachmentPreview({ files, initialId, locale, busy, onClose, onO
     <header className="preview-header">
       <div className="preview-filename" aria-live="polite"><strong title={file.fileName}>{file.fileName}</strong></div>
       <div className="preview-control-group preview-attachment-navigation">
-        <Tool label={text.previous} disabled={index === 0} onClick={() => move(-1)}><ChevronLeft size={18}/></Tool>
+        <IconButton label={text.previous} disabled={index === 0} onClick={() => move(-1)}><ChevronLeft size={18}/></IconButton>
         <span className="preview-position">{index + 1} / {files.length}</span>
-        <Tool label={text.next} disabled={index === files.length - 1} onClick={() => move(1)}><ChevronRight size={18}/></Tool>
+        <IconButton label={text.next} disabled={index === files.length - 1} onClick={() => move(1)}><ChevronRight size={18}/></IconButton>
       </div>
       <div className="preview-control-group preview-file-actions">
-        <Tool label={text.external} disabled={busy} onClick={() => onOpen(file)}><ExternalLink size={17}/></Tool>
-        <Tool label={text.path} disabled={busy} onClick={() => onCopyPath(file)}><Copy size={16}/></Tool>
-        <Tool label={text.folder} disabled={busy} onClick={() => onReveal(file)}><FolderOpen size={18}/></Tool>
-        {native && <button type="button" className={`icon-button ${native.pinned ? 'active' : ''}`} aria-pressed={native.pinned} aria-label={native.pinned ? text.unpin : text.pin} title={native.pinned ? text.unpin : text.pin} disabled={native.pinning} onClick={native.onTogglePin}>{native.pinned ? <PinOff size={17}/> : <Pin size={17}/>}</button>}
-        {!native && <><span className="tool-divider"/><button type="button" className="icon-button preview-close" title={text.close} aria-label={text.close} onClick={onClose}><X size={19}/></button></>}
+        <IconButton label={text.external} disabled={busy} onClick={() => onOpen(file)}><ExternalLink size={17}/></IconButton>
+        <IconButton label={text.path} disabled={busy} onClick={() => onCopyPath(file)}><Copy size={16}/></IconButton>
+        <IconButton label={text.folder} disabled={busy} onClick={() => onReveal(file)}><FolderOpen size={18}/></IconButton>
+        {native && <IconButton aria-pressed={native.pinned} label={native.pinned ? text.unpin : text.pin} disabled={native.pinning} onClick={native.onTogglePin}>{native.pinned ? <PinOff size={17}/> : <Pin size={17}/>}</IconButton>}
+        {!native && <><span className="tool-divider"/><IconButton className="preview-close" label={text.close} onClick={onClose}><X size={19}/></IconButton></>}
       </div>
     </header>
     <PreviewPane key={`${file.id}:${file.revision ?? ''}:${file.relativePath}`} file={file} locale={locale}/>
