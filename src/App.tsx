@@ -8,7 +8,7 @@ import { createRecord, templates } from './templates';
 import { categoryDefinition, categoryName, categoryValidation, defaultCategories, defaultCategoriesRevision } from './categories';
 import { categoryIcon } from './categoryIcons';
 import { CategoryManager } from './CategoryManager';
-import { fieldLabel, filterAttachments, filterRecords, findMatchingFields, formatBytes, formatRecord } from './domain';
+import { createLibraryIndex, fieldLabel, formatBytes, formatRecord } from './domain';
 import { tFor } from './i18n';
 import type { TranslationKey } from './i18n';
 import { isRecordSortOrder, recordSortOrders, sortRecords } from './sorting';
@@ -156,7 +156,9 @@ export default function App() {
     window.addEventListener('beforeunload', guard); return () => window.removeEventListener('beforeunload', guard);
   }, [draft, draftOriginal, categoryDirty]);
 
-  const filtered = useMemo(() => sortRecords(filterRecords(snapshot.records, snapshot.attachments, query, view === 'files' ? 'all' : view, catalog), sortOrder, locale), [snapshot, query, view, sortOrder, locale, catalog]);
+  const library = useMemo(() => createLibraryIndex(snapshot.records, snapshot.attachments, catalog), [snapshot.records, snapshot.attachments, catalog]);
+  const results = useMemo(() => library.search(query, view === 'files' ? 'all' : view, view === 'files'), [library, query, view]);
+  const filtered = useMemo(() => sortRecords(results.records, sortOrder, locale), [results.records, sortOrder, locale]);
   const selected = filtered.find(r => r.id === selectedId) ?? filtered[0];
   useEffect(() => { if (selected && selected.id !== selectedId) setSelectedId(selected.id); }, [selected, selectedId]);
   useEffect(() => { setVisibleFields(new Set()); setVisibleRecordId(null); }, [selected?.id, hideSensitiveFields]);
@@ -175,13 +177,13 @@ export default function App() {
       return next;
     });
   };
-  const matchedFieldIds = useMemo(() => new Set(selected ? findMatchingFields(selected, query, catalog).map(field => field.id) : []), [selected, query, catalog]);
+  const matchedFieldIds = useMemo(() => new Set(selected && results.fields.get(selected.id)?.map(field => field.id)), [selected, results.fields]);
   useEffect(() => {
     if (focusedFieldId) fieldNodes.current.get(focusedFieldId)?.scrollIntoView({ block: 'center', behavior: 'instant' });
   }, [focusedFieldId, selected?.id]);
   useEffect(() => { setFocusedFieldId(null); }, [query]);
-  const recordFiles = snapshot.attachments.filter(a => a.recordId === selected?.id);
-  const fileResults = useMemo(() => filterAttachments(snapshot.records, snapshot.attachments, query, catalog), [snapshot, query, catalog]);
+  const recordFiles = (selected && library.filesByRecord.get(selected.id)) ?? [];
+  const fileResults = results.files;
   const title = view === 'all' ? t('all') : view === 'favorites' ? t('favorites') : view === 'files' ? t('fileLibrary') : categoryLabel(view);
   const fail = (error: unknown) => setToast({ text: String(error).includes('DESKTOP_ONLY') ? t('desktopOnly') : String(error).includes('RECORD_CONFLICT') ? t('recordConflict') : String(error).includes('ATTACHMENT_CONFLICT') ? t('attachmentConflict') : String(error).includes('UNKNOWN_CATEGORY') ? t('unknownCategory') : String(error).includes('LIBRARY_BUSY') ? t('libraryBusy') : `${t('error')}: ${String(error)}`, error: true });
   const perform = async (action: () => Promise<void>) => { if (operationActive.current) return; operationActive.current = true; setBusy(true); try { await action(); } catch (e) { fail(e); if (String(e).includes('RECORD_CONFLICT') || String(e).includes('ATTACHMENT_CONFLICT')) { try { setSnapshot(await api.load()); } catch { /* Keep the draft and original conflict message. */ } } } finally { operationActive.current = false; setBusy(false); } };
@@ -310,7 +312,11 @@ export default function App() {
     <IconButton label={t('rename')} disabled={busy} onClick={() => { setRenameFile(file); setRenameName(editableAttachmentName(file.fileName)); }}><Pencil size={15}/></IconButton>
     <IconButton label={t('remove')} disabled={busy} onClick={() => removeFile(file)}><Trash2 size={15}/></IconButton>
   </div>;
-  const shortDate = (value: string) => new Date(value).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const dateFormatter = useMemo(() => new Intl.DateTimeFormat(locale === 'zh' ? 'zh-CN' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }), [locale]);
+  const shortDate = (value: string) => {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? date.toString() : dateFormatter.format(date);
+  };
   const newRecordButton = <button className="button primary compact-create" aria-label={t('newRecord')} title={t('newRecord')} onClick={beginCreate} disabled={loading || !!loadError || busy}><Plus size={16}/><span>{t('new')}</span></button>;
 
   return <div className="app-shell">
@@ -318,10 +324,10 @@ export default function App() {
       <div className="brand"><div className="brand-mark"><BookOpen size={21} strokeWidth={1.8}/></div><span>folio<span className="brand-dot">.</span></span></div>
       <nav aria-label={t('library')}>
         <button className={`nav-item ${view === 'all' ? 'selected' : ''}`} aria-current={view === 'all' ? 'page' : undefined} onClick={() => navigate('all')}><LayoutGrid size={17}/><span>{t('all')}</span><small>{snapshot.records.length}</small></button>
-        <button className={`nav-item ${view === 'favorites' ? 'selected' : ''}`} aria-current={view === 'favorites' ? 'page' : undefined} onClick={() => navigate('favorites')}><Star size={17}/><span>{t('favorites')}</span><small>{snapshot.records.filter(r => r.favorite).length}</small></button>
+        <button className={`nav-item ${view === 'favorites' ? 'selected' : ''}`} aria-current={view === 'favorites' ? 'page' : undefined} onClick={() => navigate('favorites')}><Star size={17}/><span>{t('favorites')}</span><small>{library.favoriteCount}</small></button>
         <button className={`nav-item ${view === 'files' ? 'selected' : ''}`} aria-current={view === 'files' ? 'page' : undefined} onClick={() => navigate('files')}><Folder size={17}/><span>{t('files')}</span><small>{snapshot.attachments.length}</small></button>
         <div className="nav-caption"><span>{t('collections')}</span><IconButton label={t('manageCategories')} disabled={loading || !!loadError || busy} onClick={openCategories}><SlidersHorizontal size={14}/></IconButton></div>
-        {catalog.map(category => { const Icon = categoryIcon(category.icon); const count = snapshot.records.filter(r => r.category === category.id).length; return <button key={category.id} className={`nav-item ${view === category.id ? 'selected' : ''}`} aria-current={view === category.id ? 'page' : undefined} title={categoryName(category, locale)} onClick={() => navigate(category.id)}><Icon size={17}/><span>{categoryName(category, locale)}</span>{count > 0 && <small>{count}</small>}</button>; })}
+        {catalog.map(category => { const Icon = categoryIcon(category.icon); const count = library.categoryCounts.get(category.id) ?? 0; return <button key={category.id} className={`nav-item ${view === category.id ? 'selected' : ''}`} aria-current={view === category.id ? 'page' : undefined} title={categoryName(category, locale)} onClick={() => navigate(category.id)}><Icon size={17}/><span>{categoryName(category, locale)}</span>{count > 0 && <small>{count}</small>}</button>; })}
       </nav>
       <div className="sidebar-bottom"><button className="nav-item" onClick={() => setSettingsOpen(true)}><Settings size={17}/><span>{t('settings')}</span></button></div>
     </aside>
@@ -332,7 +338,7 @@ export default function App() {
 
       {loading ? <div className="center-state"><div className="spinner"/><p>{t('loading')}</p></div> : loadError ? <div className="center-state"><Database size={32}/><h2>{t('error')}</h2><p className="error-message">{loadError}</p><button className="button" onClick={() => void load()}>{t('retry')}</button></div> : view === 'files' ? <section className="file-library" aria-label={title}>
         <div className="section-toolbar"><span>{fileResults.length} {t(fileResults.length === 1 ? 'fileSingular' : 'fileCount')}</span>{newRecordButton}</div>
-        {fileResults.length ? <div className="file-table"><div className="file-table-head"><span>{t('name')}</span><span>{t('record')}</span><span>{t('size')}</span><span>{t('actions')}</span></div>{fileResults.map(file => <div className="file-table-row" key={file.id}><div className="file-name"><div className="file-icon"><FileText size={20}/></div><div><button className="file-open" title={file.fileName} aria-label={`${t('openFile')}: ${file.fileName}`} disabled={busy} onClick={() => openFile(file)}><strong title={file.fileName}>{file.fileName}</strong></button><span title={file.originalName}>{file.originalName}</span></div></div><button className="text-button file-parent" onClick={() => { setView('all'); setQuery(''); setSelectedId(file.recordId); }}>{snapshot.records.find(r => r.id === file.recordId)?.title}</button><span className="mono muted">{formatBytes(file.size)}</span>{fileActions(file)}</div>)}</div> : <div className="center-state"><FolderOpen size={35}/><h2>{query ? t('noMatchingFiles') : t('noFiles')}</h2>{query ? <button className="text-button" onClick={() => setQuery('')}>{t('clearSearch')}</button> : <p>{t('noFilesHint')}</p>}</div>}
+        {fileResults.length ? <div className="file-table"><div className="file-table-head"><span>{t('name')}</span><span>{t('record')}</span><span>{t('size')}</span><span>{t('actions')}</span></div>{fileResults.map(file => <div className="file-table-row" key={file.id}><div className="file-name"><div className="file-icon"><FileText size={20}/></div><div><button className="file-open" title={file.fileName} aria-label={`${t('openFile')}: ${file.fileName}`} disabled={busy} onClick={() => openFile(file)}><strong title={file.fileName}>{file.fileName}</strong></button><span title={file.originalName}>{file.originalName}</span></div></div><button className="text-button file-parent" onClick={() => { setView('all'); setQuery(''); setSelectedId(file.recordId); }}>{library.recordsById.get(file.recordId)?.title}</button><span className="mono muted">{formatBytes(file.size)}</span>{fileActions(file)}</div>)}</div> : <div className="center-state"><FolderOpen size={35}/><h2>{query ? t('noMatchingFiles') : t('noFiles')}</h2>{query ? <button className="text-button" onClick={() => setQuery('')}>{t('clearSearch')}</button> : <p>{t('noFilesHint')}</p>}</div>}
       </section> : <section className="library-layout" aria-label={title}>
         <div className="record-pane">
           <div className="list-toolbar">
@@ -344,9 +350,9 @@ export default function App() {
           <div className="record-list">
             {filtered.length ? filtered.map(record => {
               const Icon = iconForCategory(record.category);
-              const count = snapshot.attachments.filter(a => a.recordId === record.id).length;
+              const count = library.filesByRecord.get(record.id)?.length ?? 0;
               const showCategory = view === 'all' || view === 'favorites';
-              const matches = findMatchingFields(record, query, catalog);
+              const matches = results.fields.get(record.id) ?? [];
               return <div className="record-result" key={record.id}><button className={`record-card ${selected?.id === record.id ? 'selected' : ''}`} onClick={() => { setSelectedId(record.id); setFocusedFieldId(null); }}>
                 <div className={`record-icon ${categoryClass(record.category)}`}><Icon size={18}/></div>
                 <div className="record-summary">

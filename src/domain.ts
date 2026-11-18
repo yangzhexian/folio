@@ -61,15 +61,6 @@ function fieldSearchIndex(field: Field): SearchIndex {
   };
 }
 
-function recordSearchIndex(record: ProfileRecord, catalog: CategoryDefinition[]): SearchIndex {
-  const labels = categoryDefinition(catalog, record.category);
-  const fields = record.fields.map(fieldSearchIndex);
-  return {
-    text: normalizeSearch([record.title, record.subtitle, record.notes, record.category, labels.nameEn, labels.nameZh, ...record.tags, ...fields.map(field => field.text)].join('\n')),
-    concepts: new Set(fields.flatMap(field => [...field.concepts])),
-  };
-}
-
 function matchesTerm(index: SearchIndex, term: SearchTerm): boolean {
   return term.concept ? index.concepts.has(term.concept) || term.literals!.every(literal => literal.test(index.text)) : index.text.includes(term.text);
 }
@@ -78,42 +69,89 @@ function matchesTerms(index: SearchIndex, terms: SearchTerm[]): boolean {
   return terms.every(term => matchesTerm(index, term));
 }
 
-export function filterRecords(records: ProfileRecord[], attachments: Attachment[], query: string, category: 'all' | 'favorites' | Category, catalog: CategoryDefinition[] = defaultCategories): ProfileRecord[] {
-  const terms = searchTerms(query);
-  const attachmentNames = new Map<string, string[]>();
-  for (const attachment of attachments) {
-    const names = attachmentNames.get(attachment.recordId) ?? [];
-    names.push(attachment.fileName, attachment.originalName);
-    attachmentNames.set(attachment.recordId, names);
+type RecordFilter = 'all' | 'favorites' | Category;
+type IndexedRecord = {
+  parent: SearchIndex;
+  withFileNames: SearchIndex;
+  fields: SearchIndex[];
+};
+
+export function createLibraryIndex(records: ProfileRecord[], attachments: Attachment[], catalog: CategoryDefinition[] = defaultCategories) {
+  const recordsById = new Map<string, ProfileRecord>();
+  const filesByRecord = new Map<string, Attachment[]>();
+  const categoryCounts = new Map<Category, number>();
+  const indexed = new Map<string, IndexedRecord>();
+  const individualNames = new Map<string, string>();
+  let favoriteCount = 0;
+
+  for (const record of records) {
+    recordsById.set(record.id, record);
+    categoryCounts.set(record.category, (categoryCounts.get(record.category) ?? 0) + 1);
+    if (record.favorite) favoriteCount++;
   }
-  return records.filter((record) => {
-    if (category === 'favorites' && !record.favorite) return false;
-    if (category !== 'all' && category !== 'favorites' && record.category !== category) return false;
-    if (terms.length === 0) return true;
-    const index = recordSearchIndex(record, catalog);
-    index.text += '\n' + normalizeSearch((attachmentNames.get(record.id) ?? []).join('\n'));
-    return matchesTerms(index, terms);
-  });
+  for (const file of attachments) {
+    const siblings = filesByRecord.get(file.recordId);
+    if (siblings) siblings.push(file);
+    else filesByRecord.set(file.recordId, [file]);
+  }
+
+  // Empty queries use only the lookup maps. Normalized text lives for one snapshot.
+  function getIndex(record: ProfileRecord): IndexedRecord {
+    const existing = indexed.get(record.id);
+    if (existing) return existing;
+    const labels = categoryDefinition(catalog, record.category);
+    const fields = record.fields.map(fieldSearchIndex);
+    const parent = {
+      text: normalizeSearch([record.title, record.subtitle, record.notes, record.category, labels.nameEn, labels.nameZh, ...record.tags, ...fields.map(field => field.text)].join('\n')),
+      concepts: new Set(fields.flatMap(field => [...field.concepts])),
+    };
+    const names = (filesByRecord.get(record.id) ?? []).map(file => {
+      const name = normalizeSearch([file.fileName, file.originalName].join('\n'));
+      individualNames.set(file.id, name);
+      return name;
+    });
+    const entry = { parent, fields, withFileNames: { text: [parent.text, ...names].join('\n'), concepts: parent.concepts } };
+    indexed.set(record.id, entry);
+    return entry;
+  }
+
+  function search(query: string, category: RecordFilter, includeFiles = false) {
+    const terms = searchTerms(query);
+    const fields = new Map<string, Field[]>();
+    const hits = records.filter(record => {
+      if (category === 'favorites' && !record.favorite) return false;
+      if (category !== 'all' && category !== 'favorites' && record.category !== category) return false;
+      if (!terms.length) return true;
+      const index = getIndex(record);
+      if (!matchesTerms(index.withFileNames, terms)) return false;
+      // Field hits use parent context, but a sibling filename cannot turn a field into a hit.
+      if (!includeFiles && matchesTerms(index.parent, terms)) {
+        const matches = record.fields.filter((_, i) => terms.some(term => matchesTerm(index.fields[i], term)));
+        if (matches.length) fields.set(record.id, matches);
+      }
+      return true;
+    });
+    const files = includeFiles ? attachments.filter(file => {
+      const owner = recordsById.get(file.recordId);
+      if (!owner || !terms.length) return !!owner;
+      const { parent } = getIndex(owner);
+      return matchesTerms({ text: parent.text + '\n' + individualNames.get(file.id), concepts: parent.concepts }, terms);
+    }) : [];
+    return { records: hits, fields, files };
+  }
+  return { recordsById, filesByRecord, categoryCounts, favoriteCount, search };
+}
+
+export function filterRecords(records: ProfileRecord[], attachments: Attachment[], query: string, category: RecordFilter, catalog: CategoryDefinition[] = defaultCategories): ProfileRecord[] {
+  return createLibraryIndex(records, attachments, catalog).search(query, category).records;
 }
 
 export function filterAttachments(records: ProfileRecord[], attachments: Attachment[], query: string, catalog: CategoryDefinition[] = defaultCategories): Attachment[] {
-  const terms = searchTerms(query);
-  const parents = new Map(records.map(record => [record.id, recordSearchIndex(record, catalog)]));
-  return attachments.filter(file => {
-    const parent = parents.get(file.recordId);
-    if (parent === undefined) return false;
-    return matchesTerms({ text: `${parent.text}\n${normalizeSearch(file.fileName)}\n${normalizeSearch(file.originalName)}`, concepts: parent.concepts }, terms);
-  });
+  return createLibraryIndex(records, attachments, catalog).search(query, 'all', true).files;
 }
 
 export function findMatchingFields(record: ProfileRecord, query: string, catalog: CategoryDefinition[] = defaultCategories): Field[] {
-  const terms = searchTerms(query);
-  if (terms.length === 0 || !matchesTerms(recordSearchIndex(record, catalog), terms)) return [];
-  // Parent metadata and other fields can supply context, but each hit must match its own content.
-  return record.fields.filter(field => {
-    const index = fieldSearchIndex(field);
-    return terms.some(term => matchesTerm(index, term));
-  });
+  return createLibraryIndex([record], [], catalog).search(query, 'all').fields.get(record.id) ?? [];
 }
 
 export function fieldLabel(field: Field, locale: Locale): string {

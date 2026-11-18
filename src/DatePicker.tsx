@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { dateObject, formatDate, monthCells, moveDay, moveMonth, parseDate, todayDate } from './calendar';
@@ -27,7 +27,11 @@ export function DatePicker({ value, onChange, locale, label, disabled = false }:
   const selected = parseDate(value);
   const today = todayDate();
   const dateLocale = locale === 'zh' ? 'zh-CN' : 'en-US';
-  const monthTitle = new Intl.DateTimeFormat(dateLocale, { year: 'numeric', month: 'long', timeZone: 'UTC' }).format(dateObject(focused));
+  const formatters = useMemo(() => ({
+    month: new Intl.DateTimeFormat(dateLocale, { year: 'numeric', month: 'long', timeZone: 'UTC' }),
+    day: new Intl.DateTimeFormat(dateLocale, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long', timeZone: 'UTC' }),
+  }), [dateLocale]);
+  const monthTitle = formatters.month.format(dateObject(focused));
   const cells = monthCells(focused);
   const focusId = formatDate(focused);
 
@@ -122,7 +126,7 @@ export function DatePicker({ value, onChange, locale, label, disabled = false }:
         {Array.from({ length: cells.length / 7 }, (_, row) => <div role="row" key={row}>{cells.slice(row * 7, row * 7 + 7).map((date, column) => {
           const iso = date ? formatDate(date) : '';
           const isSelected = selected !== null && iso === formatDate(selected);
-          return <div role="gridcell" key={iso || column} aria-selected={isSelected}>{date && <button type="button" data-date={iso} className={`${date.month !== focused.month ? 'outside-month' : ''} ${isSelected ? 'selected-date' : ''}`} aria-label={new Intl.DateTimeFormat(dateLocale, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long', timeZone: 'UTC' }).format(dateObject(date))} aria-current={iso === formatDate(today) ? 'date' : undefined} tabIndex={iso === focusId ? 0 : -1} onClick={() => commit(date)} onKeyDown={event => calendarKey(event, date)}>{date.day}</button>}</div>;
+          return <div role="gridcell" key={iso || column} aria-selected={isSelected}>{date && <button type="button" data-date={iso} className={`${date.month !== focused.month ? 'outside-month' : ''} ${isSelected ? 'selected-date' : ''}`} aria-label={formatters.day.format(dateObject(date))} aria-current={iso === formatDate(today) ? 'date' : undefined} tabIndex={iso === focusId ? 0 : -1} onClick={() => commit(date)} onKeyDown={event => calendarKey(event, date)}>{date.day}</button>}</div>;
         })}</div>)}
       </div>
       <div className="date-picker-footer"><button type="button" onClick={() => commit(todayDate())}>{text.today}</button><button type="button" onClick={() => commit(null)}>{text.clear}</button></div>
